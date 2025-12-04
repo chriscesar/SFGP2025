@@ -4,7 +4,7 @@
 # Set up ####
 ### load packages ####
 ld_pkgs <- c("tidyverse","ggthemes","lmerTest","effects","tictoc",
-             "sjPlot","visreg")
+             "sjPlot","visreg","mgcv","gratia")
 vapply(ld_pkgs, library, logical(1L),
        character.only = TRUE, logical.return = TRUE)
 rm(ld_pkgs)
@@ -501,7 +501,40 @@ cur_dat %>%
 # oo <- left_join(smry.cone,smry.ang,by="ID")
 # write.csv(oo,file="output/forDoc/2021.sed.bulk.csv",row.names = FALSE)
 
-#### tidy up ####
+# WIP time series stats WIP ####
+## compaction ####
+### fix formatting ####
+df_tm_com <- df_tm %>% 
+  dplyr::filter(type=="cone",
+                zone1 != "Wash") %>% 
+  dplyr::mutate(value = as.numeric(value))
+
+
+com_fit <- mgcv::gam(
+  value ~ zone1 + s(year, by = zone1,bs="cr"),
+  data = df_tm_com,
+  method = "REML")
+summary(com_fit)  
+draw(com_fit)
+
+## angle ####
+### fix formatting ####
+df_tm_ang <- df_tm %>% 
+  dplyr::filter(type=="angle",
+                zone1 != "Wash") %>% 
+  dplyr::mutate(value = as.numeric(value))
+
+
+ang_fit <- mgcv::gam(
+  value ~ zone1 + s(year, by = zone1,bs="cr"),
+  data = df_tm_ang,
+  method = "REML")
+summary(ang_fit)  
+draw(ang_fit)
+
+
+
+# tidy up ####
 ### Unload data
 rm(list = ls(pattern = "^ang"))
 rm(list = ls(pattern = "^com"))
