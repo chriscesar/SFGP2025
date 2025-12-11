@@ -4,7 +4,7 @@
 # Set up ####
 ### load packages ####
 ld_pkgs <- c("tidyverse","ggthemes","lmerTest","effects","tictoc",
-             "sjPlot","visreg","mgcv","gratia")
+             "sjPlot","visreg","mgcv","gratia","patchwork")
 vapply(ld_pkgs, library, logical(1L),
        character.only = TRUE, logical.return = TRUE)
 rm(ld_pkgs)
@@ -509,14 +509,216 @@ df_tm_com <- df_tm %>%
                 zone1 != "Wash") %>% 
   dplyr::mutate(value = as.numeric(value))
 
-
 com_fit <- mgcv::gam(
-  value ~ zone1 + s(year, by = zone1,bs="cr"),
+  # value ~ zone1 + s(year, by = zone1,bs="cr"),
+  value ~ s(year, by = zone1,bs="cr"),
   data = df_tm_com,
   method = "REML")
 summary(com_fit)  
-draw(com_fit)
+gratia::draw(com_fit)
+com.pl+  labs(
+    title = "SDSD"
+  )
 
+df_tm_com <- df_tm_com %>%
+  mutate(zone_shore = interaction(zone1, shore, drop = TRUE))
+
+com_fit_B <- mgcv::gam(
+  value ~ zone1 + shore + s(year, by = zone_shore, bs = "cr"),
+  data = df_tm_com,
+  method = "REML"
+  )
+
+p1 <- draw(com_fit_B,select="s(year):zone_shoreAbove.Upper")
+p2 <- draw(com_fit_B,select="s(year):zone_shoreInside.Upper")
+p3 <- draw(com_fit_B,select="s(year):zone_shoreInside2.Upper")
+p4 <- draw(com_fit_B,select="s(year):zone_shoreBelow.Upper")
+p5 <- draw(com_fit_B,select="s(year):zone_shoreAbove.Mid")
+p6 <- draw(com_fit_B,select="s(year):zone_shoreInside.Mid")
+p7 <- draw(com_fit_B,select="s(year):zone_shoreInside2.Mid")
+p8 <- draw(com_fit_B,select="s(year):zone_shoreBelow.Mid")
+
+p1+p2+p3+p4+p5+p6+p7+p8+patchwork::plot_layout(ncol = 4,nrow=2)
+
+# Extract smooth estimates for the zone×shore smooths of year
+sm <- gratia::smooth_estimates(com_fit_B) %>%
+  # keep only s(year):... smooths
+  dplyr::filter(stringr::str_detect(.data$.smooth, "^s\\(year\\):")) %>%
+  gratia::add_confint()
+
+# Ensure we have clean zone & shore labels.
+# gratia often provides a `by` column (here likely `zone_shore`) OR individual factor columns.
+# We'll create robust columns from `.smooth` if needed.
+sm <- sm %>%
+  mutate(
+    # If there is already a zone_shore column (from model matrix), keep it;
+    # otherwise derive from `.smooth`
+    zone_shore = dplyr::coalesce(.data$zone_shore, sub("^s\\(year\\):", "", .data$.smooth)),
+    # Split into zone1 and shore. `interaction(zone1, shore)` defaults to "zone1.shore"
+    # Adjust the sep if your interaction used a different separator.
+    .group = .data$zone_shore
+  ) %>%
+  tidyr::separate(.group, into = c("zone1", "shore"), sep = "\\.", remove = FALSE) %>% 
+  dplyr::mutate( zone1 = factor(zone1,levels=c("Above","Inside","Inside2","Below")),
+                 shore = factor(shore,levels=c("Upper","Mid","Low")))
+
+# Check column names to confirm x/estimate naming varies by gratia version
+# names(sm)
+# Typical columns: .smooth, x or year, .estimate, .se, .lower_ci, .upper_ci, zone1, shore, zone_shore
+# png(file = "figs/sed.ts.mor.pen.gam.trend.png",
+#     width=12*ppi, height=6*ppi, res=ppi)
+ggplot(sm, aes(x = year, y = .estimate)) +
+  geom_vline(xintercept = c(2008:cur.yr),linetype = 2,linewidth = 0.4,col="lightgrey")+
+  geom_hline(yintercept = 0, linetype = 2) +
+  geom_ribbon(aes(ymin = .lower_ci,
+                  ymax = .upper_ci,
+                  fill = zone1),
+              alpha = 0.25, colour = NA) +
+  geom_line(aes(colour = zone1), linewidth = 0.9) +
+  # Facet by zone and shore for a grid view (readable across management areas and shore levels)
+  facet_grid(shore ~ zone1, scales = "free_y") +
+  scale_fill_manual(values = cbPaletteFill, guide = "none") +
+  # If you want lines to match ribbons exactly, use scale_colour_manual with the same vector
+  scale_colour_manual(values = cbPalette, name = "Zone") +
+  labs(
+    title = "Sediment compaction trends since 2008",
+    # subtitle = "GAM smooths of s(Year) by zone × shore\nRibbons show simultaneous confidence intervals",
+    x = "Year",
+    y = "Smooth effect s(Year)"
+  ) +
+  ggthemes::theme_few() +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(face=2,size=18),
+    plot.subtitle = element_text(face=2,size=12),
+    axis.title.y = element_text(face=2),
+    axis.title.x=element_blank(),
+    axis.text.y = element_text(face=2),
+    axis.text.x = element_text(face=2,size = 12),
+    strip.text = element_text(face=2,size=14),
+    strip.background = element_rect(color = "black",fill = "grey95", size = 1),
+    ) ->com.pl.A
+# dev.off()
+
+## get derivatives ##
+# Get exact smooth labels from the model
+terms_year_by <- gratia::smooths(com_fit_B) %>%
+  stringr::str_subset("^s\\(year\\):")
+
+# First derivative
+deriv1 <- gratia::derivatives(
+  com_fit_B,
+  term = terms_year_by,
+  order = 1,
+  interval = "simultaneous",
+  n = 200,
+  unconditional = TRUE
+) %>%
+  rename(year = year, deriv = .derivative) %>%
+  mutate(zone_shore = sub("^s\\(year\\):", "", .smooth)) %>%
+  separate(zone_shore, into = c("zone1", "shore"), sep = "\\.", remove = FALSE) %>% 
+  mutate(zone = gsub("^.{0,10}", "", zone1)) %>% 
+  mutate(
+    zone = factor(zone,levels=c("Above","Inside","Inside2","Below")),
+    shore = factor(shore,levels=c("Upper","Mid","Low")),
+                       )
+# png(file = "figs/sed.ts.mor.pen.1stderiv.png",
+#     width=12*ppi, height=6*ppi, res=ppi)
+deriv1 %>% 
+  mutate(change = ifelse(.lower_ci < 0 & .upper_ci > 0, NA_real_, deriv)) %>% 
+  mutate(zone1 = ifelse(grepl("Above",.smooth),"Above",
+                        ifelse(grepl("Inside2",.smooth),"Inside2",
+                               ifelse(grepl("Below",.smooth),"Below","Inside")))) %>% 
+  mutate(zone1 = factor(zone1, levels = c("Above","Inside","Inside2","Below"))) %>% 
+  ggplot(., aes(x = year, y = deriv)) +
+  geom_vline(xintercept = c(2008:cur.yr),linetype = 2,linewidth = 0.4,col="lightgrey")+
+  geom_hline(yintercept = 0, linetype = 2, linewidth = 0.4) +
+  geom_ribbon(aes(ymin = .lower_ci, ymax = .upper_ci, fill = zone),
+              alpha = 0.25, colour = NA) +
+  geom_line(aes(colour = zone), linewidth = 0.8,show.legend = FALSE) +
+  facet_grid(shore ~ zone, scales = "free_y") +
+  scale_fill_manual(values = cbPaletteFill, guide = "none") +
+  geom_line(aes(x=year, y= change), col=2,lwd=2)+
+  scale_colour_manual(values = cbPalette[1:4]) +
+  labs(
+    # title = "Sediment compaction",
+    subtitle="First derivative of s(Year) by zone × shore\nDerivative > 0 indicates increasing trend; < 0 decreasing",
+    y = "ds/dYear"
+    ) +
+  ggthemes::theme_few() +
+  theme(
+    plot.title = element_text(face=2,size=18),
+    plot.subtitle = element_text(face=2,size=12),
+    axis.title.y = element_text(face=2),
+    axis.title.x=element_blank(),
+    axis.text.y = element_text(face=2),
+    axis.text.x = element_text(face=2,size = 12),
+    strip.text = element_text(face=2,size=14),
+    strip.background = element_rect(color = "black",fill = "grey95", size = 1),
+    ) -> com.pl.B
+# dev.off()
+
+png(file = "figs/sed.ts.mor.pen_AB.png",
+        width=12*ppi, height=10*ppi, res=ppi)
+com.pl.A/com.pl.B+plot_layout(guides='collect')+plot_annotation(tag_levels = 'A')
+dev.off()
+
+deriv2 <- gratia::derivatives(
+  com_fit_B,
+  term = terms_year_by,
+  order = 2,
+  interval = "simultaneous",
+  n = 200,
+  unconditional = TRUE
+) %>%
+  rename(year = year, deriv = .derivative) %>%
+  mutate(zone_shore = sub("^s\\(year\\):", "", .smooth)) %>%
+  separate(zone_shore, into = c("zone1", "shore"), sep = "\\.", remove = FALSE) %>% 
+  mutate(zone = gsub("^.{0,10}", "", zone1)) %>% 
+  mutate(
+    zone = factor(zone,levels=c("Above","Inside","Inside2","Below")),
+    shore = factor(shore,levels=c("Upper","Mid","Low")),
+  )
+
+# png(file = "figs/sed.ts.mor.pen.2ndderiv.png",
+    # width=12*ppi, height=6*ppi, res=ppi)
+deriv2 %>% 
+  mutate(change = ifelse(.lower_ci < 0 & .upper_ci > 0, NA_real_, deriv)) %>% 
+  mutate(zone1 = ifelse(grepl("Above",.smooth),"Above",
+                        ifelse(grepl("Inside2",.smooth),"Inside2",
+                               ifelse(grepl("Below",.smooth),"Below","Inside")))) %>% 
+  mutate(zone1 = factor(zone1, levels = c("Above","Inside","Inside2","Below"))) %>% 
+  ggplot(., aes(x = year, y = deriv)) +
+  geom_vline(xintercept = c(2008:cur.yr),linetype = 2,linewidth = 0.4,col="lightgrey")+
+  geom_hline(yintercept = 0, linetype = 2, linewidth = 0.4) +
+  geom_ribbon(aes(ymin = .lower_ci, ymax = .upper_ci, fill = zone),
+              alpha = 0.25, colour = NA) +
+  geom_line(aes(colour = zone), linewidth = 0.8,show.legend = FALSE) +
+  facet_grid(shore ~ zone, scales = "free_y") +
+  scale_fill_manual(values = cbPaletteFill, guide = "none") +
+  geom_line(aes(x=year, y= change), col=2,lwd=2)+
+  scale_colour_manual(values = cbPalette[1:4]) +
+  labs(
+    # title = "Sediment compaction",
+    subtitle="Second derivative of s(Year) by zone × shore\nCurvature: positive = accelerating increase / easing decline; negative = turning down",
+    y = "ds/dYear"
+  ) +
+  ggthemes::theme_few() +
+  theme(
+    plot.title = element_text(face=2,size=18),
+    plot.subtitle = element_text(face=2,size=12),
+    axis.title.y = element_text(face=2),
+    axis.title.x=element_blank(),
+    axis.text.y = element_text(face=2),
+    axis.text.x = element_text(face=2,size = 12),
+    strip.text = element_text(face=2,size=14),
+    strip.background = element_rect(color = "black",fill = "grey95", size = 1),
+  )->com.pl.C
+# dev.off()
+
+com.pl.B/com.pl.C+plot_layout(guides='collect')+plot_annotation(tag_levels = 'A')
+
+###############
 ## angle ####
 ### fix formatting ####
 df_tm_ang <- df_tm %>% 
@@ -524,13 +726,396 @@ df_tm_ang <- df_tm %>%
                 zone1 != "Wash") %>% 
   dplyr::mutate(value = as.numeric(value))
 
-
 ang_fit <- mgcv::gam(
-  value ~ zone1 + s(year, by = zone1,bs="cr"),
+  # value ~ zone1 + s(year, by = zone1,bs="cr"),
+  value ~ s(year, by = zone1,bs="cr"),
   data = df_tm_ang,
   method = "REML")
 summary(ang_fit)  
-draw(ang_fit)
+gratia::draw(ang_fit)
+
+df_tm_ang <- df_tm_ang %>%
+  mutate(zone_shore = interaction(zone1, shore, drop = TRUE))
+
+ang_fit_B <- mgcv::gam(
+  value ~ zone1 + shore + s(year, by = zone_shore, bs = "cr"),
+  data = df_tm_ang,
+  method = "REML"
+)
+
+p1 <- draw(ang_fit_B,select="s(year):zone_shoreAbove.Upper")
+p2 <- draw(ang_fit_B,select="s(year):zone_shoreInside.Upper")
+p3 <- draw(ang_fit_B,select="s(year):zone_shoreInside2.Upper")
+p4 <- draw(ang_fit_B,select="s(year):zone_shoreBelow.Upper")
+p5 <- draw(ang_fit_B,select="s(year):zone_shoreAbove.Mid")
+p6 <- draw(ang_fit_B,select="s(year):zone_shoreInside.Mid")
+p7 <- draw(ang_fit_B,select="s(year):zone_shoreInside2.Mid")
+p8 <- draw(ang_fit_B,select="s(year):zone_shoreBelow.Mid")
+
+p1+p2+p3+p4+p5+p6+p7+p8+patchwork::plot_layout(ncol = 4,nrow=2)
+
+# Extract smooth estimates for the zone×shore smooths of year
+sm <- gratia::smooth_estimates(ang_fit_B) %>%
+  # keep only s(year):... smooths
+  dplyr::filter(stringr::str_detect(.data$.smooth, "^s\\(year\\):")) %>%
+  gratia::add_confint()
+
+# Ensure we have clean zone & shore labels.
+# gratia often provides a `by` column (here likely `zone_shore`) OR individual factor columns.
+# We'll create robust columns from `.smooth` if needed.
+sm <- sm %>%
+  mutate(
+    # If there is already a zone_shore column (from model matrix), keep it;
+    # otherwise derive from `.smooth`
+    zone_shore = dplyr::coalesce(.data$zone_shore, sub("^s\\(year\\):", "", .data$.smooth)),
+    # Split into zone1 and shore. `interaction(zone1, shore)` defaults to "zone1.shore"
+    # Adjust the sep if your interaction used a different separator.
+    .group = .data$zone_shore
+  ) %>%
+  tidyr::separate(.group, into = c("zone1", "shore"), sep = "\\.", remove = FALSE) %>% 
+  dplyr::mutate( zone1 = factor(zone1,levels=c("Above","Inside","Inside2","Below")),
+                 shore = factor(shore,levels=c("Upper","Mid","Low")))
+
+# Check column names to confirm x/estimate naming varies by gratia version
+# names(sm)
+# Typical columns: .smooth, x or year, .estimate, .se, .lower_ci, .upper_ci, zone1, shore, zone_shore
+# png(file = "figs/sed.ts.mor.ang.gam.trend.png",
+    # width=12*ppi, height=6*ppi, res=ppi)
+ggplot(sm, aes(x = year, y = .estimate)) +
+  geom_vline(xintercept = c(2008:cur.yr),linetype = 2,linewidth = 0.4,col="lightgrey")+
+  geom_hline(yintercept = 0, linetype = 2) +
+  geom_ribbon(aes(ymin = .lower_ci,
+                  ymax = .upper_ci,
+                  fill = zone1),
+              alpha = 0.25, colour = NA) +
+  geom_line(aes(colour = zone1), linewidth = 0.9) +
+  # Facet by zone and shore for a grid view (readable across management areas and shore levels)
+  facet_grid(shore ~ zone1, scales = "free_y") +
+  scale_fill_manual(values = cbPaletteFill, guide = "none") +
+  # If you want lines to match ribbons exactly, use scale_colour_manual with the same vector
+  scale_colour_manual(values = cbPalette, name = "Zone") +
+  labs(
+    title = "Beach slope trends since 2008",
+    # subtitle = "GAM smooths of s(Year) by zone × shore\nRibbons show simultaneous confidence intervals",
+    x = "Year",
+    y = "Smooth effect s(Year)"
+  ) +
+  ggthemes::theme_few() +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(face=2,size=18),
+    plot.subtitle = element_text(face=2,size=12),
+    axis.title.y = element_text(face=2),
+    axis.title.x=element_blank(),
+    axis.text.y = element_text(face=2),
+    axis.text.x = element_text(face=2,size = 12),
+    strip.text = element_text(face=2,size=14),
+    strip.background = element_rect(color = "black",fill = "grey95", size = 1),
+  ) -> ang.pl.A
+# dev.off()
+
+## get derivatives ##
+# Get exact smooth labels from the model
+terms_year_by <- gratia::smooths(ang_fit_B) %>%
+  stringr::str_subset("^s\\(year\\):")
+
+# First derivative
+deriv1 <- gratia::derivatives(
+  ang_fit_B,
+  term = terms_year_by,
+  order = 1,
+  interval = "simultaneous",
+  n = 200,
+  unconditional = TRUE
+  ) %>%
+  rename(year = year, deriv = .derivative) %>%
+  mutate(zone_shore = sub("^s\\(year\\):", "", .smooth)) %>%
+  separate(zone_shore, into = c("zone1", "shore"), sep = "\\.", remove = FALSE) %>% 
+  mutate(zone = gsub("^.{0,10}", "", zone1)) %>% 
+  mutate(
+    zone = factor(zone,levels=c("Above","Inside","Inside2","Below")),
+    shore = factor(shore,levels=c("Upper","Mid","Low")),
+  )
+
+# png(file = "figs/sed.ts.mor.ang.1stderiv.png",
+#     width=12*ppi, height=6*ppi, res=ppi)
+ggplot(deriv1, aes(x = year, y = deriv)) +
+  geom_vline(xintercept = c(2008:cur.yr),linetype = 2,linewidth = 0.4,col="lightgrey")+
+  geom_hline(yintercept = 0, linetype = 2, linewidth = 0.4) +
+  geom_ribbon(aes(ymin = .lower_ci, ymax = .upper_ci, fill = zone),
+              alpha = 0.25, colour = NA) +
+  geom_line(aes(colour = zone), linewidth = 0.8,show.legend = FALSE) +
+  facet_grid(shore ~ zone, scales = "free_y") +
+  scale_fill_manual(values = cbPaletteFill, guide = "none") +
+  scale_colour_manual(values = cbPalette[1:4]) +
+  labs(
+    # title = "Beach slope",
+    # subtitle="First derivative of s(Year) by zone × shore\nDerivative > 0 indicates increasing trend; < 0 decreasing",
+    y = "ds/dYear"
+  ) +
+  ggthemes::theme_few() +
+  theme(
+    plot.title = element_text(face=2,size=18),
+    plot.subtitle = element_text(face=2,size=12),
+    axis.title.y = element_text(face=2),
+    axis.title.x=element_blank(),
+    axis.text.y = element_text(face=2),
+    axis.text.x = element_text(face=2,size = 12),
+    strip.text = element_text(face=2,size=14),
+    strip.background = element_rect(color = "black",fill = "grey95", size = 1),
+  )->ang.pl.B
+# dev.off()
+
+deriv2 <- gratia::derivatives(
+  ang_fit_B,
+  term = terms_year_by,
+  order = 2,
+  interval = "simultaneous",
+  n = 200,
+  unconditional = TRUE
+) %>%
+  rename(year = year, deriv = .derivative) %>%
+  mutate(zone_shore = sub("^s\\(year\\):", "", .smooth)) %>%
+  separate(zone_shore, into = c("zone1", "shore"), sep = "\\.", remove = FALSE) %>% 
+  mutate(zone = gsub("^.{0,10}", "", zone1)) %>% 
+  mutate(
+    zone = factor(zone,levels=c("Above","Inside","Inside2","Below")),
+    shore = factor(shore,levels=c("Upper","Mid","Low")),
+  )
+
+# png(file = "figs/sed.ts.mor.ang.2ndderiv.png",
+#     width=12*ppi, height=6*ppi, res=ppi)
+ggplot(deriv2, aes(x = year, y = deriv)) +
+  geom_vline(xintercept = c(2008:cur.yr),linetype = 2,linewidth = 0.4,col="lightgrey")+
+  geom_hline(yintercept = 0, linetype = 2, linewidth = 0.4) +
+  geom_ribbon(aes(ymin = .lower_ci, ymax = .upper_ci, fill = zone),
+              alpha = 0.25, colour = NA) +
+  geom_line(aes(colour = zone), linewidth = 0.8,show.legend = FALSE) +
+  facet_grid(shore ~ zone, scales = "free_y") +
+  scale_fill_manual(values = cbPaletteFill, guide = "none") +
+  scale_colour_manual(values = cbPalette[1:4]) +
+  labs(
+    # title = "Sediment compaction",
+    # subtitle="Second derivative of s(Year) by zone × shore\nCurvature: positive = accelerating increase / easing decline; negative = turning down",
+    y = "ds/dYear"
+  ) +
+  ggthemes::theme_few() +
+  theme(
+    plot.title = element_text(face=2,size=18),
+    plot.subtitle = element_text(face=2,size=12),
+    axis.title.y = element_text(face=2),
+    axis.title.x=element_blank(),
+    axis.text.y = element_text(face=2),
+    axis.text.x = element_text(face=2,size = 12),
+    strip.text = element_text(face=2,size=14),
+    strip.background = element_rect(color = "black",fill = "grey95", size = 1),
+  )
+# dev.off()
+
+
+png(file = "figs/sed.ts.mor.ang_AB.png",
+    width=12*ppi, height=10*ppi, res=ppi)
+ang.pl.A/ang.pl.B+plot_layout(guides='collect')+plot_annotation(tag_levels = 'A')
+dev.off()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+############################
+
+# # Extract smooth estimates for the year-by-zone1 smooths and add CIs
+# gratia::smooth_estimates(com_fit)  %>% #names()
+#   # keep only the s(year):zone1* smooths
+#   dplyr::filter(str_detect(.data$.smooth, "^s\\(year\\):")) %>% 
+#   gratia::add_confint() %>% #View()
+# 
+# # Inspect columns: typically `x` (the covariate), `est`, `se`, `lower_ci`, `upper_ci`, `by`
+# # Some versions name x as the covariate (e.g., `year`) — if so, adapt aes(x = year)
+# ggplot(., aes(x = .data$year, y = .data$.estimate)) +
+#   geom_hline(yintercept = 0, lty=2)+
+#   geom_ribbon(aes(ymin = .data$.lower_ci,
+#                   ymax = .data$.upper_ci,
+#                   fill = .data$zone1),
+#               alpha = 0.25, colour = NA) +
+#   geom_line(aes(colour = .data$zone1), linewidth = 0.8) +
+#   facet_wrap(~ zone1, scales = "free_y") +
+#   scale_fill_manual(name = "", values=cbPaletteFill)+
+#   # scale_fill_brewer(type = "qual", palette = "Set2") +
+#   scale_colour_brewer(type = "qual", palette = "Set2") +
+#   labs(
+#     title="Generalised additive model trends of sediment compaction since 2008",
+#     #x = "Year",
+#     y = "Smooth effect s(Year)",
+#     colour = "Zone",
+#     fill   = "Zone"
+#     ) +
+#   ggthemes::theme_few() +
+#   theme(
+#     legend.position = "none",
+#     axis.text = element_text(face=2),
+#     axis.title.y = element_text(face=2),
+#     axis.title.x = element_blank(),
+#     strip.text = element_text(face=2),
+#     )
+# 
+# #### derivatives ####
+# gratia::smooths(com_fit)
+# 
+# # Explicit vector of smooth terms (from gratia::smooths(com_fit))
+# terms_year_by <- c(
+#   "s(year):zone1Above",
+#   "s(year):zone1Inside",
+#   "s(year):zone1Inside2",
+#   "s(year):zone1Below"
+# )
+# 
+# # --- First derivative (velocity of change) ---
+# 
+# # --- First derivative ---
+# deriv1 <- gratia::derivatives(
+#   com_fit,
+#   term = terms_year_by,      # use exact names
+#   order = 1,                 # first derivative
+#   interval = "simultaneous", # or "confidence" for pointwise CI
+#   n = 200,                   # grid density over year
+#   unconditional = TRUE       # include parametric uncertainty
+# ) %>% 
+#   # .x is the covariate value; .derivative is the derivative
+#   rename(year = year, deriv = .derivative) %>%
+#   # Create a clean zone1 label from the smooth name if not already present
+#   mutate(
+#     zone1 = if ("zone1" %in% names(.)) .data$zone1 else sub("^s\\(year\\):", "", .data$.smooth),
+#     order = 1
+#   )
+# 
+# # --- Second derivative (acceleration / curvature) ---
+# deriv2 <- gratia::derivatives(
+#   com_fit,
+#   term = terms_year_by,      # use exact names
+#   order = 2,                 # second derivative
+#   interval = "simultaneous", # or "confidence" for pointwise CI
+#   n = 200,                   # grid density over year
+#   unconditional = TRUE       # include parametric uncertainty
+# ) %>% 
+#   # .x is the covariate value; .derivative is the derivative
+#   rename(year = year, deriv = .derivative) %>%
+#   # Create a clean zone1 label from the smooth name if not already present
+#   mutate(
+#     zone1 = if ("zone1" %in% names(.)) .data$zone1 else sub("^s\\(year\\):", "", .data$.smooth),
+#     order = 2
+#   )
+# 
+# # Combine for easier plotting (optional)
+# derivs <- bind_rows(deriv1, deriv2)
+# 
+# 
+# ggplot(deriv1, aes(x = year, y = deriv)) +
+#   geom_hline(yintercept = 0, linetype = 2, linewidth = 0.4) +
+#   geom_ribbon(aes(ymin = .lower_ci, ymax = .upper_ci, fill = zone1),
+#               alpha = 0.25, colour = NA) +
+#   geom_line(aes(colour = zone1), linewidth = 0.8) +
+#   facet_wrap(~ zone1, scales = "free_y") +
+#   scale_fill_manual(name = "", values = cbPaletteFill) +
+#   scale_colour_brewer(type = "qual", palette = "Set2") +
+#   labs(
+#     title = "First derivative of s(Year) by zone",
+#     subtitle = "Derivative > 0 indicates increasing trend; < 0 decreasing",
+#     x = "Year",
+#     y = "First derivative ds/dYear"
+#   ) +
+#   ggthemes::theme_few() +
+#   theme(legend.position = "none")
+# 
+# 
+# ggplot(deriv2, aes(x = year, y = deriv)) +
+#   geom_hline(yintercept = 0, linetype = 2, linewidth = 0.4) +
+#   geom_ribbon(aes(ymin = .lower_ci, ymax = .upper_ci, fill = zone1),
+#               alpha = 0.25, colour = NA) +
+#   geom_line(aes(colour = zone1), linewidth = 0.8) +
+#   facet_wrap(~ zone1, scales = "free_y") +
+#   scale_fill_manual(name = "", values = cbPaletteFill) +
+#   scale_colour_brewer(type = "qual", palette = "Set2") +
+#   labs(
+#     title = "Second derivative of s(Year) by zone",
+#     subtitle = "Curvature: positive = accelerating increase / easing decline; negative = turning down",
+#     x = "Year",
+#     y = expression(d^2*s/dYear^2)
+#   ) +
+#   ggthemes::theme_few() +
+#   theme(legend.position = "none")
+# 
+# #Highlight only significant periods
+# ## deriv1
+# deriv1_sig <- deriv1 %>%
+#   mutate(sig = .lower_ci > 0 | .upper_ci < 0)
+# 
+# ggplot(deriv1_sig, aes(x = year, y = deriv)) +
+#   geom_hline(yintercept = 0, linetype = 2, linewidth = 0.4) +
+#   geom_ribbon(aes(ymin = ifelse(sig, .lower_ci, NA_real_),
+#                   ymax = ifelse(sig, .upper_ci, NA_real_),
+#                   fill = zone1),
+#               alpha = 0.35, colour = NA) +
+#   geom_line(aes(colour = zone1), linewidth = 0.8) +
+#   facet_wrap(~ zone1, scales = "free_y") +
+#   scale_fill_manual(values = cbPaletteFill) +
+#   scale_colour_brewer(type = "qual", palette = "Set2") +
+#   labs(title = "First derivative (significant periods highlighted)",
+#        x = "Year", y = "ds/dYear") +
+#   ggthemes::theme_few() +
+#   theme(legend.position = "none")
+# 
+# ## deriv2
+# deriv2_sig <- deriv2 %>%
+#   mutate(sig = .lower_ci > 0 | .upper_ci < 0)
+# 
+# ggplot(deriv2_sig, aes(x = year, y = deriv)) +
+#   geom_hline(yintercept = 0, linetype = 2, linewidth = 0.4) +
+#   geom_ribbon(aes(ymin = ifelse(sig, .lower_ci, NA_real_),
+#                   ymax = ifelse(sig, .upper_ci, NA_real_),
+#                   fill = zone1),
+#               alpha = 0.35, colour = NA) +
+#   geom_line(aes(colour = zone1), linewidth = 0.8) +
+#   facet_wrap(~ zone1, scales = "free_y") +
+#   scale_fill_manual(values = cbPaletteFill) +
+#   scale_colour_brewer(type = "qual", palette = "Set2") +
+#   labs(title = "Second derivative (significant periods highlighted)",
+#        x = "Year", y = "ds/dYear") +
+#   ggthemes::theme_few() +
+#   theme(legend.position = "none")
+# 
+# ## angle ####
+# ### fix formatting ####
+# df_tm_ang <- df_tm %>% 
+#   dplyr::filter(type=="angle",
+#                 zone1 != "Wash") %>% 
+#   dplyr::mutate(value = as.numeric(value))
+# 
+# 
+# ang_fit <- mgcv::gam(
+#   value ~ zone1 + s(year, by = zone1,bs="cr"),
+#   data = df_tm_ang,
+#   method = "REML")
+# summary(ang_fit)  
+# draw(ang_fit)
 
 
 
