@@ -516,9 +516,9 @@ com_fit <- mgcv::gam(
   method = "REML")
 summary(com_fit)  
 gratia::draw(com_fit)
-com.pl+  labs(
-    title = "SDSD"
-  )
+# com.pl+  labs(
+#     title = "SDSD"
+#   )
 
 df_tm_com <- df_tm_com %>%
   mutate(zone_shore = interaction(zone1, shore, drop = TRUE))
@@ -612,6 +612,7 @@ deriv1 <- gratia::derivatives(
   order = 1,
   interval = "simultaneous",
   n = 200,
+  type="central",
   unconditional = TRUE
 ) %>%
   rename(year = year, deriv = .derivative) %>%
@@ -621,7 +622,8 @@ deriv1 <- gratia::derivatives(
   mutate(
     zone = factor(zone,levels=c("Above","Inside","Inside2","Below")),
     shore = factor(shore,levels=c("Upper","Mid","Low")),
-                       )
+    )
+
 # png(file = "figs/sed.ts.mor.pen.1stderiv.png",
 #     width=12*ppi, height=6*ppi, res=ppi)
 deriv1 %>% 
