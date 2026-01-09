@@ -3,7 +3,9 @@
 
 # Set up ####
 ## load packages ####
-ld_pkgs <- c("tidyverse","tictoc","patchwork","forecast")
+ld_pkgs <- c("tidyverse","tictoc","patchwork","forecast","mgcv",
+             "purrr")
+
 vapply(ld_pkgs, library, logical(1L),
        character.only = TRUE, logical.return = TRUE)
 rm(ld_pkgs)
@@ -103,6 +105,7 @@ png(file = "figs/ifca.class.ts.png",
     width=14*ppi, height=8*ppi, res=ppi)
 ggplot(data = ifca, aes(x = year, y = tonnes, fill = bed))+
   geom_hline(yintercept = 0,colour="lightgrey",lty=2)+
+  geom_vline(xintercept = seq(2004,cur.yr,by=1),colour="lightgrey",lty=2)+
   # geom_smooth(method = "loess", colour = "red", span = 0.9)+
   geom_smooth(method = "gam", colour = "red", span = 0.9)+
   geom_point(size=2)+
@@ -138,6 +141,96 @@ ggplot(data = ifca, aes(x = year, y = tonnes, fill = bed))+
   coord_cartesian(ylim=c(0, NA))
 dev.off()
 toc(log=TRUE)
+
+# GAM ####
+(fit <- mgcv::gam(tonnes ~ s(year, by= bed) + class + class*bed,
+                 data = ifca %>% filter(!is.na(tonnes))))
+
+## generate summary table ####
+sjPlot::tab_model(fit,
+                  dv.labels = "Tonnes",
+                  file = "output/models/ifca_gam_summary.html"
+                  )
+
+# Build a prediction grid: cover the range of year for each bed & class
+pred_grid <- ifca %>%
+  filter(!is.na(tonnes)) %>%
+  summarize(min_year = min(year, na.rm = TRUE),
+            max_year = max(year, na.rm = TRUE)) %>%
+  { seq(.$min_year, .$max_year, length.out = 200) } %>%
+  as.data.frame() %>%
+  rename(year = 1) %>%
+  crossing(
+    bed   = levels(ifca$bed),      # ensure factors match model
+    class = levels(ifca$class)
+  )
+
+# Get predictions (on response scale) + SEs
+pred_out <- predict(fit, newdata = pred_grid, type = "response", se.fit = TRUE)
+
+pred_df <- pred_grid %>%
+  mutate(
+    .fitted = pred_out$fit,
+    .se     = pred_out$se.fit,
+    .lower  = .fitted - 1.96 * .se,
+    .upper  = .fitted + 1.96 * .se
+  )
+
+# Plot: points (observed) + smooth lines + 95% CI ribbons ####
+png(file = "figs/ifca.class.ts.gam.png",
+    width=14*ppi, height=8*ppi, res=ppi)
+ggplot() +
+  geom_hline(yintercept = 0,colour="lightgrey",lty=2)+
+  geom_vline(xintercept = seq(2004,cur.yr,by=1),
+             colour="lightgrey",lty=2
+             )+
+  # observed values
+  geom_point(
+    data = ifca,
+    aes(x = year, y = tonnes
+        ),
+    size=2,
+    ) +
+  scale_colour_manual(name = "", values=cbPalette)+
+  scale_fill_manual(name = "", values=cbPalette)+
+  # uncertainty ribbon
+  geom_ribbon(
+    data = pred_df,
+    aes(x = year, ymin = .lower, ymax = .upper, fill = bed),
+    alpha = 0.15,
+    show.legend = FALSE
+  ) +
+  # fitted lines
+  geom_line(
+    data = pred_df,
+    aes(x = year, y = .fitted),
+    colour= 2,
+    linewidth = 1
+  ) +
+  # facet_wrap(~ bed, scales = "free_y") +
+  facet_grid(class~bed)+
+  # scale_color_brewer(palette = "Dark2") +
+  # scale_fill_brewer(palette = "Dark2") +
+  xlab("") + ylab("Cockle stock estimate (tonnes)")+
+  labs(title="Estimated adult and juvenile cockle stock biomasses within 2 cockle beds in the north of The Wash",
+       subtitle = "Data provided by the Eastern Inshore Fisheries and Conservation Authority",
+       # caption = "Red lines indicate loess smooth with span = 0.9. Ribbons indicate Standard Errors\nNo stock data were gathered in 2020")+
+       caption = "Red lines and shaded ribbons indicate GAM model predictions with standard errors.\nNo stock data were gathered in 2020"
+       )+
+  theme(
+    plot.title = element_text(face=2,size=18),
+    plot.subtitle = element_text(face=2,size=12),
+    plot.caption = element_text(face=2,size=12),
+    axis.title.y = element_text(face=2),
+    axis.title.x=element_blank(),
+    axis.text.y = element_text(face=2),
+    axis.text.x = element_text(face=2,size = 12),
+    strip.text = element_text(face=2,size=14),
+    strip.background = element_rect(color = "black",
+                                    fill = "grey95", size = 1),
+  )+
+  coord_cartesian(ylim=c(0, NA))
+dev.off()
 
 ### combined: normal
 tic("plot combined: normal")
@@ -326,25 +419,25 @@ dev.off()
 ###=============##
 ### ACF PLOTS ####
 ###=============##
-# png(file = "output/figs/ifca.acf.frisk.interp.png",
-#     width=12*ppi, height=6*ppi, res=ppi)
-# par(mfrow = c(2,1))
-# par(mar = c(4, 4, 0.5, 0.2))
-# acf(ad.fr.interp$tonnes,main = "", na.action = na.pass)
-# text(x = 9.25, y = -0.37,"Friskney Adults", adj=0)
-# acf(ju.fr.interp$tonnes,main = "", na.action = na.pass)
-# text(x = 9.25, y = -0.37,"Friskney Juveniles", adj=0)
-# dev.off()
-# 
-# png(file = "output/figs/ifca.acf.wrang.interp.png",
-#     width = 12 * ppi, height = 6 * ppi, res = ppi)
-# par(mfrow = c(2,1))
-# par(mar = c(4, 4, 0.5, 0.2))
-# acf(ad.wr.interp$tonnes,main="", na.action = na.pass)
-# text(x = 9.25, y = -0.37,"Wrangle Adults", adj=0)
-# acf(ju.wr.interp$tonnes,main="", na.action = na.pass)
-# text(x = 9.25, y = -0.37,"Wrangle Juveniles", adj=0)
-# dev.off()
+png(file = "figs/ifca.acf.frisk.interp.png",
+    width=12*ppi, height=6*ppi, res=ppi)
+par(mfrow = c(2,1))
+par(mar = c(4, 4, 0.5, 0.2))
+acf(ad.fr.interp$tonnes,main = "", na.action = na.pass)
+text(x = 9.25, y = -0.37,"Friskney Adults", adj=0)
+acf(ju.fr.interp$tonnes,main = "", na.action = na.pass)
+text(x = 9.25, y = -0.37,"Friskney Juveniles", adj=0)
+dev.off()
+
+png(file = "figs/ifca.acf.wrang.interp.png",
+    width = 12 * ppi, height = 6 * ppi, res = ppi)
+par(mfrow = c(2,1))
+par(mar = c(4, 4, 0.5, 0.2))
+acf(ad.wr.interp$tonnes,main="", na.action = na.pass)
+text(x = 9.25, y = -0.37,"Wrangle Adults", adj=0)
+acf(ju.wr.interp$tonnes,main="", na.action = na.pass)
+text(x = 9.25, y = -0.37,"Wrangle Juveniles", adj=0)
+dev.off()
 
 ######################################################
 # FROM HERE ####################
