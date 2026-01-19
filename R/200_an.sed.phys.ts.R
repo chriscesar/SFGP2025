@@ -66,7 +66,6 @@ com_pred <- data.frame(
 predict(com_fit_B, newdata = com_pred) -> nu
 as_tibble(bind_cols(com_pred,as_tibble(nu))) -> com_pred; rm(nu)
 
-
 # com_fit_tw <- mgcv::gam(
 #   value ~ zone1 + shore + s(year, by = zone_shore, bs = "cr"),
 #   data = df_tm_com,
@@ -75,18 +74,18 @@ as_tibble(bind_cols(com_pred,as_tibble(nu))) -> com_pred; rm(nu)
 # )
 
 ### initial plots ####
-p1 <- draw(com_fit_B,select="s(year):zone_shoreAbove.Upper")
-p2 <- draw(com_fit_B,select="s(year):zone_shoreInside.Upper")
-p3 <- draw(com_fit_B,select="s(year):zone_shoreInside2.Upper")
-p4 <- draw(com_fit_B,select="s(year):zone_shoreBelow.Upper")
-p5 <- draw(com_fit_B,select="s(year):zone_shoreAbove.Mid")
-p6 <- draw(com_fit_B,select="s(year):zone_shoreInside.Mid")
-p7 <- draw(com_fit_B,select="s(year):zone_shoreInside2.Mid")
-p8 <- draw(com_fit_B,select="s(year):zone_shoreBelow.Mid")
-
-(com_fit_B_draw <- p1+p2+p3+p4+p5+p6+p7+p8+patchwork::plot_layout(ncol = 4,nrow=2))
-rm(p1,p2,p3,p4,p5,p6,p7,p8)
-
+# p1 <- draw(com_fit_B,select="s(year):zone_shoreAbove.Upper")
+# p2 <- draw(com_fit_B,select="s(year):zone_shoreInside.Upper")
+# p3 <- draw(com_fit_B,select="s(year):zone_shoreInside2.Upper")
+# p4 <- draw(com_fit_B,select="s(year):zone_shoreBelow.Upper")
+# p5 <- draw(com_fit_B,select="s(year):zone_shoreAbove.Mid")
+# p6 <- draw(com_fit_B,select="s(year):zone_shoreInside.Mid")
+# p7 <- draw(com_fit_B,select="s(year):zone_shoreInside2.Mid")
+# p8 <- draw(com_fit_B,select="s(year):zone_shoreBelow.Mid")
+# 
+# (com_fit_B_draw <- p1+p2+p3+p4+p5+p6+p7+p8+patchwork::plot_layout(ncol = 4,nrow=2))
+# rm(p1,p2,p3,p4,p5,p6,p7,p8)
+# 
 ## generate model estimates ####
 # Extract smooth estimates for the zone×shore smooths of year
 sm <- gratia::smooth_estimates(com_fit_B) %>%
@@ -115,6 +114,15 @@ sm %>%
   mutate(meas = ilink(.estimate))
 
 ## plot raw values ####
+
+zones <- unique(df$zone1)
+bg_cols <- cbPaletteFill[c(1:4,7)]
+bg_cols <- setNames(bg_cols[seq_along(zones)], zones)
+
+strip_elems <- lapply(zones, function(z)
+  element_rect(fill = bg_cols[[z]], color = "black", linewidth = 1)
+  )
+
 # png(file = paste0("figs/sed.ts.mor.pen_vals.png"),
 #     width=12*ppi, height=6*ppi, res=ppi)
 df %>% 
@@ -133,7 +141,13 @@ df %>%
   geom_smooth(method = "gam", colour = "red", #span = .9
               show.legend = FALSE
   )+
-  facet_grid(shore~zone1)+
+  # facet_grid(shore~zone1)+
+  ggh4x::facet_grid2(
+    rows = vars(shore),
+    cols = vars(zone1),
+    strip = strip_themed(
+      background_x = strip_elems)
+    )+
   scale_colour_manual(name = "", values=cbPalette)+
   scale_fill_manual(name = "", values=cbPaletteFill[c(1:4,7)])+
   # scale_x_continuous(breaks = seq(2008, cur.yr, by = 4))+
@@ -285,7 +299,13 @@ com_sm_d1 %>% #names()
     ),
     alpha = 0.25, colour = NA) +
   geom_line(aes(colour = sm_zone1), linewidth = 0.8,show.legend = FALSE) +
-  facet_grid(sm_shore ~ sm_zone1, scales = "free_y") +
+  # facet_grid(sm_shore ~ sm_zone1, scales = "free_y") +
+  ggh4x::facet_grid2(
+    rows = vars(sm_shore),
+    cols = vars(sm_zone1),
+    strip = strip_themed(
+      background_x = strip_elems)
+  )+
   scale_fill_manual(values = cbPaletteFill, guide = "none") +
   scale_colour_manual(values = cbPalette[1:4]) +
   ggnewscale::new_scale_fill()+ggnewscale::new_scale_colour()+
@@ -327,7 +347,7 @@ com_sm_d1 %>% #names()
 # dev.off()
 
 ## export patchwork object ####
-png(file = paste0("figs/sed.ts.mor.pen_changeptsAB.png"),
+png(file = "figs/sed.ts.mor.pen_changeptsAB.png",
     width=12*ppi, height=10*ppi, res=ppi)
 pl_com_A/pl_com_B + patchwork::plot_annotation(tag_levels = "A") +
   plot_layout(axes = "collect") & 
@@ -359,17 +379,17 @@ com_fit_B <- mgcv::gam(
 )
 
 ### initial plots ####
-p1 <- draw(com_fit_B,select="s(year):zone_shoreAbove.Upper")
-p2 <- draw(com_fit_B,select="s(year):zone_shoreInside.Upper")
-p3 <- draw(com_fit_B,select="s(year):zone_shoreInside2.Upper")
-p4 <- draw(com_fit_B,select="s(year):zone_shoreBelow.Upper")
-p5 <- draw(com_fit_B,select="s(year):zone_shoreAbove.Mid")
-p6 <- draw(com_fit_B,select="s(year):zone_shoreInside.Mid")
-p7 <- draw(com_fit_B,select="s(year):zone_shoreInside2.Mid")
-p8 <- draw(com_fit_B,select="s(year):zone_shoreBelow.Mid")
-
-(com_fit_B_draw <- p1+p2+p3+p4+p5+p6+p7+p8+patchwork::plot_layout(ncol = 4,nrow=2))
-rm(p1,p2,p3,p4,p5,p6,p7,p8)
+# p1 <- draw(com_fit_B,select="s(year):zone_shoreAbove.Upper")
+# p2 <- draw(com_fit_B,select="s(year):zone_shoreInside.Upper")
+# p3 <- draw(com_fit_B,select="s(year):zone_shoreInside2.Upper")
+# p4 <- draw(com_fit_B,select="s(year):zone_shoreBelow.Upper")
+# p5 <- draw(com_fit_B,select="s(year):zone_shoreAbove.Mid")
+# p6 <- draw(com_fit_B,select="s(year):zone_shoreInside.Mid")
+# p7 <- draw(com_fit_B,select="s(year):zone_shoreInside2.Mid")
+# p8 <- draw(com_fit_B,select="s(year):zone_shoreBelow.Mid")
+# 
+# (com_fit_B_draw <- p1+p2+p3+p4+p5+p6+p7+p8+patchwork::plot_layout(ncol = 4,nrow=2))
+# rm(p1,p2,p3,p4,p5,p6,p7,p8)
 
 ## generate model estimates ####
 # Extract smooth estimates for the zone×shore smooths of year
@@ -414,7 +434,13 @@ df %>%
   # geom_smooth(method = "loess", colour = "red", span = .9)+
   geom_smooth(method = "gam", colour = "red", #span = .9
   )+
-  facet_grid(shore~zone1)+
+  # facet_grid(shore~zone1)+
+  ggh4x::facet_grid2(
+    rows = vars(shore),
+    cols = vars(zone1),
+    strip = strip_themed(
+      background_x = strip_elems)
+  )+
   scale_colour_manual(name = "", values=cbPalette)+
   scale_fill_manual(name = "", values=cbPaletteFill)+
   # scale_x_continuous(breaks = seq(2008, cur.yr, by = 4))+
@@ -566,7 +592,13 @@ ang_sm_d1 %>% #names()
   ),
   alpha = 0.25, colour = NA) +
   geom_line(aes(colour = sm_zone1), linewidth = 0.8,show.legend = FALSE) +
-  facet_grid(sm_shore ~ sm_zone1, scales = "free_y") +
+  # facet_grid(sm_shore ~ sm_zone1, scales = "free_y") +
+  ggh4x::facet_grid2(
+    rows = vars(sm_shore),
+    cols = vars(sm_zone1),
+    strip = strip_themed(
+      background_x = strip_elems)
+  )+
   scale_fill_manual(values = cbPaletteFill, guide = "none") +
   scale_colour_manual(values = cbPalette[1:4]) +
   ggnewscale::new_scale_fill()+ggnewscale::new_scale_colour()+
@@ -619,4 +651,12 @@ dev.off()
 
 ## remove items beginning with "com" to avoid cross-contamination of outputs
 rm(list = ls(pattern = "^com"))
+rm(list = ls(pattern = "^pl"))
 rm(cone.mn, df_tm_com)
+rm(list = ls(pattern = "^cb"))
+rm(list = ls(pattern = "^ang"))
+rm(list = ls(pattern = "^df"))
+rm(strip_elems,bg_cols,cur.yr,fol,gisfol,perm,ppi,projfol,
+   shore,year,zone1,zones,granstat,ilink,sum_zero)
+
+
