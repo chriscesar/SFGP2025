@@ -16,12 +16,14 @@ source("R/00_meta_setMeta.R")
 ab <- c("T1N","T1","T1S")
 inside <- c("T4","T7","T8","T11","T12")
 inside2 <- "T13"
-bel <- c("T15","T21","T22","T23","T24","T25","T26")
+bel <- c("T15","T17", "T20", "T21","T22","T23","T24","T25","T26")
 wash <- c("WA1","WA2","WA3","WA4","WA5","WA6")
 
 df_sed <- readxl::read_xlsx(paste0(fol,"sed.data.ALL.USE.xlsx"), sheet = "AllDat") %>% 
   filter(., DetUse != "Remove: metadata") %>%  # drop unneeded rows
   mutate(., year = lubridate::year(SAMP_SAMPLE_DATE))
+
+## assign zones
 df_sed$zone1 <- ifelse(
   df_sed$Transect %in% ab,"Above",
   ifelse(
@@ -41,52 +43,58 @@ df_sed$Transect <- factor(df_sed$Transect,
                             "T1N", "T1","T1S",
                             "T4","T7", "T8", "T11", "T12",
                             "T13",
-                            "T15", "T21", "T22", "T23","T24", "T25","T26",
+                            "T15", "T17", "T20", "T21", "T22", "T23","T24", "T25","T26",
                             "WA1","WA2","WA3","WA4","WA5","WA6"
                           ))
 
-# load and append older data ####
-df_sed_old <- read.csv(file = paste0(fol,"sed.psa.hi.ts.csv"))
-
-df_sed_bulk <- readxl::read_xlsx(paste0(fol,"sed.psa.bulkWIP_use.xlsx"),
-                                 sheet="sed.bulk.ts.out")
-df_sed_bulk$transect <- factor(df_sed_bulk$transect, levels=c(
-  "T1N","T1","T1S","T4","T11","T7", "T8", "T12", "T13", "T15", "T17",
-  "T20","T21", "T22", "T23", "T24", "T25", "T26","WA1","WA2","WA3","WA4","WA5","WA6"
-))
-
-df_sed_bulk$shore <- factor(df_sed_bulk$shore,levels=c("Upper","Mid","Low","Surf"))
-df_sed_bulk$zone1 <- factor(df_sed_bulk$zone1, levels=c("Above","Inside","Inside2","Below","Wash"))
-
-names(df_sed)
-names(df_sed_old)
+# # load and append older data ####
+# df_sed_old <- read.csv(file = paste0(fol,"sed.psa.hi.ts.csv"))
+# 
+# df_sed_bulk <- readxl::read_xlsx(paste0(fol,"sed.psa.bulkWIP_use.xlsx"),
+#                                  sheet="sed.bulk.ts.out")
+# df_sed_bulk$transect <- factor(df_sed_bulk$transect, levels=c(
+#   "T1N","T1","T1S","T4","T11","T7", "T8", "T12", "T13", "T15", "T17",
+#   "T20","T21", "T22", "T23", "T24", "T25", "T26","WA1","WA2","WA3","WA4","WA5","WA6"
+# ))
+# 
+# df_sed_bulk$shore <- factor(df_sed_bulk$shore,levels=c("Upper","Mid","Low","Surf"))
+# df_sed_bulk$zone1 <- factor(df_sed_bulk$zone1, levels=c("Above","Inside","Inside2","Below","Wash"))
+# 
+# names(df_sed)
+# names(df_sed_old)
 
 #rm(ab,inside,inside2,bel,wash)
 toc(log=TRUE)
 
 ##
 tic("prep data for gradistat")
+## replace NA with 0
+
 # prep data for gradistat ####
 df_sed %>% 
-  filter(.,str_detect(DetUse, 'phi')) %>% 
+  ## keep only phi data
+  filter(.,str_detect(DetUse, 'phi')) %>%
+  ##remove missing values
+  filter(!is.na(MEAS_RESULT)) %>% 
   # filter(.,year == cur.yr) %>%
   # filter(str_starts(Transect, "WA")) %>% #names(.)
   mutate("code" = paste0(year,".",Transect,".",Shore,".",method)) %>% #View(.)
-  dplyr::select(.,code,sediment_um,MEAS_RESULT) %>% 
+  dplyr::select(.,code,sediment_um,MEAS_RESULT) %>%
   # pivot_wider(.,names_from = code,values_from = MEAS_RESULT
   #             ) -> sed_grad
   tidyr::pivot_wider(
 
     names_from  = code,
     values_from = MEAS_RESULT,
-    values_fn   = mean
+    values_fn   = mean,
+    values_fill = 0
   )->sed_grad0
 
 ## convert to DF and create row names ####
-
 sed_grad0 <- as.data.frame(sed_grad0)
 row.names(sed_grad0) <- sed_grad0$sediment_um
 sed_grad0 <- sed_grad0[,-1]
+
 toc(log=TRUE)
 
 # Run Gradistat & save outputs ####
@@ -149,7 +157,7 @@ grad_out$stat$arith <- grad_out$stat$arith %>%
            "T1N", "T1","T1S",
            "T4","T7", "T8", "T11", "T12",
            "T13",
-           "T15", "T21", "T22", "T23","T24", "T25","T26",
+           "T15","T17", "T20", "T21", "T22", "T23","T24", "T25","T26",
            "WA1","WA2","WA3","WA4","WA5","WA6"
          )),
          zone1 = factor(zone1, levels = c("Above","Inside","Inside2",
@@ -180,7 +188,7 @@ grad_out$stat$geom <- grad_out$stat$geom %>%
            "T1N", "T1","T1S",
            "T4","T7", "T8", "T11", "T12",
            "T13",
-           "T15", "T21", "T22", "T23","T24", "T25","T26",
+           "T15","T17", "T20", "T21", "T22", "T23","T24", "T25","T26",
            "WA1","WA2","WA3","WA4","WA5","WA6"
          )),
          zone1 = factor(zone1, levels = c("Above","Inside","Inside2",
@@ -211,7 +219,7 @@ grad_out$stat$fowa <- grad_out$stat$fowa %>%
            "T1N", "T1","T1S",
            "T4","T7", "T8", "T11", "T12",
            "T13",
-           "T15", "T21", "T22", "T23","T24", "T25","T26",
+           "T15","T17", "T20", "T21", "T22", "T23","T24", "T25","T26",
            "WA1","WA2","WA3","WA4","WA5","WA6"
          )),
          zone1 = factor(zone1, levels = c("Above","Inside","Inside2",
@@ -243,7 +251,7 @@ grad_out$sedim$texture <- grad_out$sedim$texture %>%
            "T1N", "T1","T1S",
            "T4","T7", "T8", "T11", "T12",
            "T13",
-           "T15", "T21", "T22", "T23","T24", "T25","T26",
+           "T15","T17", "T20", "T21", "T22", "T23","T24", "T25","T26",
            "WA1","WA2","WA3","WA4","WA5","WA6"
          )),
          zone1 = factor(zone1, levels = c("Above","Inside","Inside2",
@@ -291,7 +299,7 @@ grad_out$sedim$descript <- grad_out$sedim$descript %>%
            "T1N", "T1","T1S",
            "T4","T7", "T8", "T11", "T12",
            "T13",
-           "T15", "T21", "T22", "T23","T24", "T25","T26",
+           "T15","T17", "T20", "T21", "T22", "T23","T24", "T25","T26",
            "WA1","WA2","WA3","WA4","WA5","WA6"
          )),
          zone1 = factor(zone1, levels = c("Above","Inside","Inside2",
