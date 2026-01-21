@@ -125,7 +125,7 @@ grad_out$index <- grad_out$index %>%
            "T1N", "T1","T1S",
            "T4","T7", "T8", "T11", "T12",
            "T13",
-           "T15", "T21", "T22", "T23","T24", "T25","T26",
+           "T15", "T17", "T20", "T21", "T22", "T23","T24", "T25","T26",
            "WA1","WA2","WA3","WA4","WA5","WA6"
          )),
          zone1 = factor(zone1, levels = c("Above","Inside","Inside2",
