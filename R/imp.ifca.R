@@ -452,7 +452,7 @@ vols <- droplevels(vols[vols$measure == "sand nourishment",])
 vols$sand_m3 <- vols$value
 
 ### subset data
-vols <- subset(vols, year<2025 & year>2003)
+vols <- subset(vols, year<2026 & year>2003)
 tot.fr <- subset(tot, bed == "Friskney")
 tot.wr <- subset(tot, bed == "Wrangle")
 tot.fr.interp <- subset(tot.interp, bed == "Friskney")
