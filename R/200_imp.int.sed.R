@@ -234,7 +234,6 @@ tictoc::toc(log = TRUE)
 # generate table of sediment statistics ####
 group_vars <- c("year", "shore", "method", "zone1")
 
-
 df$index %>%
   ungroup() %>% 
   # optionally drop columns you don't want in the summary
@@ -256,3 +255,70 @@ df$index %>%
   mutate(across(ends_with("_sd"), ~tidyr::replace_na(.x, 0))) -> stats_out
 
 write.csv(stats_out, file = "output/sed.stats.csv",row.names=FALSE)
+
+df$index %>%
+  ungroup() %>% 
+  filter(year == cur.yr, method=="5cm") %>% 
+  # optionally drop columns you don't want in the summary
+  select(-samples, -transect) %>%
+  group_by(across(all_of(group_vars))) %>%
+  
+  ####
+  ## sorting calculation not required.  The @`SD parameter in the output
+  ## is actually the Sorting value 
+  ####
+  
+  # # calculate sorting value
+  # ### Based on Folk & Ward (1957)
+  
+  # ## First, convert diameters to phi
+  # mutate(
+  #   D5_phi = -log(D5/1000,base = 2),
+  #   D16_phi = -log(D16/1000,base = 2),
+  #   D84_phi = -log(D84/1000,base = 2),
+  #   D95_phi = -log(D95/1000,base = 2),) %>% 
+  # ##Next, calculate sorting
+  # mutate(
+  #   sort = ((D84_phi-D16_phi)/4)+((D95_phi-D5_phi)/6.6)
+  # ) %>%
+  summarise(
+    across(
+      # all numeric columns except the grouping vars
+      .cols = where(is.numeric) & !any_of(group_vars),
+      # compute both mean and sd
+      .fns  = list(mean = ~mean(.x, na.rm = TRUE),
+                   sd   = ~sd(.x,   na.rm = TRUE)),
+      # name like var_mean, var_sd
+      .names = "{.col}_{.fn}"
+    ),
+    .groups = "drop"
+  ) %>%
+  # set NA SDs to 0, keep means untouched
+  mutate(across(ends_with("_sd"),
+                ~tidyr::replace_na(.x, 0))) -> stats_out_cur.yr
+
+write.csv(stats_out_cur.yr, file = "output/sed.stats.cur.yr.csv",row.names=FALSE)
+
+df$stat$fowa %>% 
+  ungroup() %>% 
+  filter(year == cur.yr, method=="5cm") %>% 
+  # optionally drop columns you don't want in the summary
+  select(-samples, -transect) %>%
+  group_by(across(all_of(group_vars))) %>%
+  summarise(
+    across(
+      # all numeric columns except the grouping vars
+      .cols = where(is.numeric) & !any_of(group_vars),
+      # compute both mean and sd
+      .fns  = list(mean = ~mean(.x, na.rm = TRUE),
+                   sd   = ~sd(.x,   na.rm = TRUE)),
+      # name like var_mean, var_sd
+      .names = "{.col}_{.fn}"
+    ),
+    .groups = "drop"
+  ) %>%
+  # set NA SDs to 0, keep means untouched
+  mutate(across(ends_with("_sd"),
+                ~tidyr::replace_na(.x, 0))) -> stats_out_bulk_cur.yr
+
+write.csv(stats_out_bulk_cur.yr, file = "output/sed.stats.bulk.cur.yr.csv",row.names=FALSE)
