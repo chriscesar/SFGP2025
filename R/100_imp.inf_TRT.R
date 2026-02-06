@@ -163,7 +163,7 @@ dfl_shzone <- dflall %>%
 # plot traits over time by zone ####
 ## Bioturbation ####
 png(
-  file = "output/figs/inf.Trt.ts.Bioturb.png",
+  file = "figs/inf.Trt.ts.Bioturb.png",
   width = 15 * ppi,
   height = 10 * ppi,
   res = ppi
@@ -190,12 +190,15 @@ dfl_shzone %>%
         # legend.title = element_blank(),
         legend.title = element_text(face = "bold"),
         strip.text = element_text(face = "bold"),
+        axis.text = element_text(face=2),
+        plot.title = element_text(face=2),
+        plot.subtitle = element_text(face=2),
         axis.title.y = element_text(face = "bold"))
 dev.off()
 
 ## EggDevelopment ####
 png(
-  file = "output/figs/inf.Trt.ts.EggDevt.png",
+  file = "figs/inf.Trt.ts.EggDevt.png",
   width = 15 * ppi,
   height = 10 * ppi,
   res = ppi
@@ -222,12 +225,15 @@ dfl_shzone %>%
         # legend.title = element_blank(),
         legend.title = element_text(face = "bold"),
         strip.text = element_text(face = "bold"),
+        axis.text = element_text(face=2),
+        plot.title = element_text(face=2),
+        plot.subtitle = element_text(face=2),
         axis.title.y = element_text(face = "bold"))
 dev.off()
 
 ## FeedingMode ####
 png(
-  file = "output/figs/inf.Trt.ts.FeedMode.png",
+  file = "figs/inf.Trt.ts.FeedMode.png",
   width = 15 * ppi,
   height = 10 * ppi,
   res = ppi
@@ -254,12 +260,15 @@ dfl_shzone %>%
         # legend.title = element_blank(),
         legend.title = element_text(face = "bold"),
         strip.text = element_text(face = "bold"),
+        axis.text = element_text(face=2),
+        plot.title = element_text(face=2),
+        plot.subtitle = element_text(face=2),
         axis.title.y = element_text(face = "bold"))
 dev.off()
 
 ## Lifespan_years ####
 png(
-  file = "output/figs/inf.Trt.ts.Lifespan.png",
+  file = "figs/inf.Trt.ts.Lifespan.png",
   width = 15 * ppi,
   height = 10 * ppi,
   res = ppi
@@ -286,12 +295,15 @@ dfl_shzone %>%
         # legend.title = element_blank(),
         legend.title = element_text(face = "bold"),
         strip.text = element_text(face = "bold"),
+        axis.text = element_text(face=2),
+        plot.title = element_text(face=2),
+        plot.subtitle = element_text(face=2),
         axis.title.y = element_text(face = "bold"))
 dev.off()
 
 ## LarvalDevelopment ####
 png(
-  file = "output/figs/inf.Trt.ts.LarvDevt.png",
+  file = "figs/inf.Trt.ts.LarvDevt.png",
   width = 15 * ppi,
   height = 10 * ppi,
   res = ppi
@@ -318,12 +330,15 @@ dfl_shzone %>%
         # legend.title = element_blank(),
         legend.title = element_text(face = "bold"),
         strip.text = element_text(face = "bold"),
+        axis.text = element_text(face=2),
+        plot.title = element_text(face=2),
+        plot.subtitle = element_text(face=2),
         axis.title.y = element_text(face = "bold"))
 dev.off()
 
 ## LivingHabit ####
 png(
-  file = "output/figs/inf.Trt.ts.LivHab.png",
+  file = "figs/inf.Trt.ts.LivHab.png",
   width = 15 * ppi,
   height = 10 * ppi,
   res = ppi
@@ -350,12 +365,15 @@ dfl_shzone %>%
         # legend.title = element_blank(),
         legend.title = element_text(face = "bold"),
         strip.text = element_text(face = "bold"),
+        axis.text = element_text(face=2),
+        plot.title = element_text(face=2),
+        plot.subtitle = element_text(face=2),
         axis.title.y = element_text(face = "bold"))
 dev.off()
 
 ## Morphology ####
 png(
-  file = "output/figs/inf.Trt.ts.Morph.png",
+  file = "figs/inf.Trt.ts.Morph.png",
   width = 15 * ppi,
   height = 10 * ppi,
   res = ppi
@@ -382,12 +400,15 @@ dfl_shzone %>%
         # legend.title = element_blank(),
         legend.title = element_text(face = "bold"),
         strip.text = element_text(face = "bold"),
+        axis.text = element_text(face=2),
+        plot.title = element_text(face=2),
+        plot.subtitle = element_text(face=2),
         axis.title.y = element_text(face = "bold"))
 dev.off()
 
 ## Mobility ####
 png(
-  file = "output/figs/inf.Trt.ts.Mobil.png",
+  file = "figs/inf.Trt.ts.Mobil.png",
   width = 15 * ppi,
   height = 10 * ppi,
   res = ppi
@@ -414,12 +435,15 @@ dfl_shzone %>%
         # legend.title = element_blank(),
         legend.title = element_text(face = "bold"),
         strip.text = element_text(face = "bold"),
+        axis.text = element_text(face=2),
+        plot.title = element_text(face=2),
+        plot.subtitle = element_text(face=2),
         axis.title.y = element_text(face = "bold"))
 dev.off()
 
 ## SedimentPosition ####
 png(
-  file = "output/figs/inf.Trt.ts.SedPos.png",
+  file = "figs/inf.Trt.ts.SedPos.png",
   width = 15 * ppi,
   height = 10 * ppi,
   res = ppi
@@ -446,12 +470,15 @@ dfl_shzone %>%
         # legend.title = element_blank(),
         legend.title = element_text(face = "bold"),
         strip.text = element_text(face = "bold"),
+        axis.text = element_text(face=2),
+        plot.title = element_text(face=2),
+        plot.subtitle = element_text(face=2),
         axis.title.y = element_text(face = "bold"))
 dev.off()
 
 ## MaxSize ####
 png(
-  file = "output/figs/inf.Trt.ts.MaxSize.png",
+  file = "figs/inf.Trt.ts.MaxSize.png",
   width = 15 * ppi,
   height = 10 * ppi,
   res = ppi
@@ -478,6 +505,9 @@ dfl_shzone %>%
         # legend.title = element_blank(),
         legend.title = element_text(face = "bold"),
         strip.text = element_text(face = "bold"),
+        axis.text = element_text(face=2),
+        plot.title = element_text(face=2),
+        plot.subtitle = element_text(face=2),
         axis.title.y = element_text(face = "bold"))
 dev.off()
 
@@ -575,6 +605,10 @@ df_best %>%
          "mobility"="mob","size_mm"="sr") %>% 
   select(year,shore,zone1,feeding,lifespan_yr,
          mobility,size_mm,best_trait) -> df_types
+
+write.csv(df_types,
+          file="output/traits.desc.csv",
+          row.names = FALSE)
 # # TIDY UP ####
 # # rm(list = ls(pattern = "^df"))
 # rm(list = ls(pattern = "^cb"))
