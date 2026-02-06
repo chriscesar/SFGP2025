@@ -64,6 +64,11 @@ df_sed$Transect <- factor(df_sed$Transect,
 # names(df_sed_old)
 
 #rm(ab,inside,inside2,bel,wash)
+## Save data ####
+saveRDS(
+  df_sed,
+  file = "data/sed_raw_ts.Rdat"
+  )
 toc(log=TRUE)
 
 ##
@@ -88,12 +93,23 @@ df_sed %>%
     values_from = MEAS_RESULT,
     values_fn   = mean,
     values_fill = 0
+  ) %>% 
+  dplyr::mutate(
+    sediment_um = as.numeric(sediment_um)
+  ) %>% 
+  arrange(
+    desc(sediment_um)
   )->sed_grad0
 
 ## convert to DF and create row names ####
 sed_grad0 <- as.data.frame(sed_grad0)
 row.names(sed_grad0) <- sed_grad0$sediment_um
+## order by sed side (descending)
 sed_grad0 <- sed_grad0[,-1]
+
+write.csv(sed_grad0,
+          file = "data/sed_raw_forGrad.csv"
+          )
 
 toc(log=TRUE)
 
