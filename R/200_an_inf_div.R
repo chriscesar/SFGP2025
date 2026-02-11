@@ -66,6 +66,7 @@ length(unique(dfl_cur$name))
 
 dtmp <- dfl_cur %>% filter(zone1 == "Wash")
 length(unique(dtmp$name))
+rm(dtmp)
 #############
 # calculate indices ####
 tic("calculate indices");print("calculate indices")
@@ -223,6 +224,16 @@ df.cur <- dfdiv %>%
   filter(., year == cur.yr) %>% 
   filter(., mesh == "1.0mm")
 
+## mean current year tax rich (without Wash)
+### Tax rich
+df.cur %>% 
+  filter(zone1 !="Wash") %>% 
+  summarise(mean(S),sd(S))
+
+### Tax density
+df.cur %>% 
+  filter(zone1 !="Wash") %>% 
+  summarise(mean(Nm2),sd(Nm2))
 toc(log=TRUE)
 
 ### summarise across all zones ####
@@ -420,35 +431,35 @@ summary(modzJ_lmer)
 class(modzJ_lmer) <- "lmerMod"
 
 ## tabulate models ####
-stargazer(modzS, modzNm2, modzbiom,modzd,modzJ,modzH, 
-          type = "html", 
-          out =  paste0("output/models/inf_Univ_",cur.yr,"_model_summary2.html"), 
-          title = "Comparison of Models",
-          column.labels = c("Taxon richness", "Abundance",
-                            "Biomass","Margalef's d","Pielou's eveness",
-                            "Shannon entropy"),
-          align = TRUE,
-          report=('vcstp'),
-          intercept.bottom = FALSE
-          )
-
-stargazer(
-  modS_lmer,
-  modNm2_lmer,
-  modzbiom_lmer,
-  # modzd_lmer,
-  modzJ_lmer,
-  modzH_lmer,
-          type = "html",
-          out =  paste0("output/models/inf_Univ_",cur.yr,"_lmermodel_summary2.html"),
-          title = "Comparison of Models",
-          column.labels = c("Taxon richness", "Abundance",
-                            "Biomass","Margalef's d","Pielou's eveness",
-                            "Shannon entropy"),
-          align = TRUE,
-          report=('vcstp'),
-          intercept.bottom = FALSE
-          )
+# stargazer(modzS, modzNm2, modzbiom,modzd,modzJ,modzH, 
+#           type = "html", 
+#           out =  paste0("output/models/inf_Univ_",cur.yr,"_model_summary2.html"), 
+#           title = "Comparison of Models",
+#           column.labels = c("Taxon richness", "Abundance",
+#                             "Biomass","Margalef's d","Pielou's eveness",
+#                             "Shannon entropy"),
+#           align = TRUE,
+#           report=('vcstp'),
+#           intercept.bottom = FALSE
+#           )
+# 
+# stargazer(
+#   modS_lmer,
+#   modNm2_lmer,
+#   modzbiom_lmer,
+#   # modzd_lmer,
+#   modzJ_lmer,
+#   modzH_lmer,
+#           type = "html",
+#           out =  paste0("output/models/inf_Univ_",cur.yr,"_lmermodel_summary2.html"),
+#           title = "Comparison of Models",
+#           column.labels = c("Taxon richness", "Abundance",
+#                             "Biomass","Margalef's d","Pielou's eveness",
+#                             "Shannon entropy"),
+#           align = TRUE,
+#           report=('vcstp'),
+#           intercept.bottom = FALSE
+#           )
 
 sjPlot::tab_model(modS_lmer,
                   modNm2_lmer,
@@ -1193,13 +1204,32 @@ ggplot(partial_residuals, aes(x = year, y = partial_residual)) +
     x = "Year", y = "Partial residual (link scale)"
   )
 
+# summarise & export per-taxon biomass data ####
+df_biom %>%
+  select(.,-c(biomass_raw_g,taxon,Kingdom:Flag,Comment,units)) %>% 
+  ## sum duplicates (to remove #juvenile conspecifics)
+  group_by(across(-biomass_g_per_m2)) %>%
+  summarise(biomass_g_per_m2=sum(biomass_g_per_m2),
+            .groups = "drop") %>% ungroup() %>% 
+  pivot_wider(names_from = taxonUSE,values_from = biomass_g_per_m2,
+              values_fill = 0) %>% 
+  pivot_longer(cols=-c(year:rep)) %>% 
+  ## calculate means
+  select(-c(rep,code)) %>% 
+  group_by(across(-c(value))) %>% 
+  summarise(value = mean(value)) %>% 
+  pivot_wider(names_from = name,values_from = value)->df_biom_summary
+
+write.csv(df_biom_summary,
+          file="data/biomass_summary.csv",
+          row.names = FALSE)
 
 ## Tidy up ####
 rm(list = ls(pattern = "^df"))
 rm(list=ls(pattern = "^anov"))
 rm(list=ls(pattern = "^mod"))
 rm(list=ls(pattern = "^cbP"))
-rm(ppi, tmz, perm, cur.yr, x, projfol, source_file, sum_zero, fol, gisfol)
+rm(ppi, tmz, perm, cur.yr, x, projfol, source_file, sum_zero, fol, gisfol,granstat)
 toc(log=TRUE)
 unlist(tictoc::tic.log())
 
