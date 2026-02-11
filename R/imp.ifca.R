@@ -536,7 +536,10 @@ rm(list = ls(pattern = "^cb"))
 rm(list = ls(pattern = "^ifca"))
 rm(list = ls(pattern = "^tot"))
 rm(list = ls(pattern = "^sed"))
-rm(sum_zero,vols,cbPalette,ppi,cur.yr,fol, cbPaletteTxt,gisfol,perm,url,projfol)
+rm(list = ls(pattern = "^pred"))
+rm(sum_zero,vols,cbPalette,ppi,cur.yr,fol,
+   cbPaletteTxt,gisfol,perm,url,projfol, fit, granstat
+   )
 
 detach("package:tidyverse", unload = TRUE)
 detach("package:tictoc", unload = TRUE)
