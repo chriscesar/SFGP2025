@@ -214,13 +214,13 @@ df$stat$fowa %>%
     method="gam",
     se=FALSE,
   )+
-  # ggh4x::facet_grid2(
-  #   rows = vars(name),
-  #   cols = vars(zone1),
-  #   strip = strip_themed(
-  #     background_x = strip_elems)
-  # )+
-  # facet_grid(name~zone1) +
+  ggh4x::facet_grid2(
+    rows = vars(name),
+    cols = vars(zone1),
+    strip = strip_themed(
+      background_x = strip_elems)
+  )+
+  facet_grid(name~zone1) +
   facet_wrap(.~zone1)+
   theme(
     plot.title = element_text(face=2),
@@ -341,3 +341,41 @@ df$stat$fowa %>%
     legend.title = element_blank(),
     legend.text = element_text(face = 2)
   )
+
+  # Ridge plot ####
+  ## load data ###
+  dfl <- readRDS("data/sed_raw_ts.Rdat")
+  dfl %>% 
+    filter(Phi !="NA") %>% #View()
+    filter(method != "15cm") %>% 
+    filter(zone1 != "Wash") %>% #names()
+    # dplyr::select(-method) %>%
+    select(year,zone1,Shore,Phi,MEAS_RESULT) %>% 
+    mutate(Phi = as.numeric(Phi)) %>% 
+    group_by(year, zone1,Shore,Phi) %>% 
+    summarise("perc"=mean(MEAS_RESULT),
+              .groups = "drop") %>%
+    ungroup() %>% 
+    mutate(label=paste0(Shore," shore: ",zone1)) %>% 
+    ggplot(data = .,
+           aes(x = Phi, y=as.factor(year), height = perc))+
+    geom_rect(aes(xmin = -5,xmax = 0,ymin = -Inf,ymax = Inf),fill="grey",alpha=0.01)+
+    geom_rect(aes(xmin = 0,xmax = 4,ymin = -Inf,ymax = Inf),fill="yellow",alpha=0.005)+
+    geom_rect(aes(xmin = 4,xmax = 9,ymin = -Inf,ymax = Inf),fill="sienna",alpha=0.005)+
+    geom_vline(xintercept = c(0,4), colour="darkgrey",lty=2)+
+    facet_grid(Shore ~ zone1)+
+    geom_density_ridges(stat="identity",#scale=1.4,alpha=0.7,
+                        aes(fill=zone1),
+                        show.legend = FALSE)+
+    scale_y_discrete(limits=rev)+
+    scale_fill_manual(values=cbPalette)+
+    xlim(-5,9)+
+    labs(x="Phi",y="Year",
+         title = "Distribution of sediment grain sizes since 2011 within different beach nourishment zones on the Lincolnshire coast",
+         subtitle="Sandy sediments characterise most of the monitoring zone. Coarser sediments (i.e., smaller phi values) dominate Inside the beach nourishment zone.\nThis difference is largely confined to the upper and mid shore sites which receive the majority of nourishment material",
+         caption = "Background panel shading indicates broad sediment categories: Gravel (phi <0), Sand (phi 0-4, Silt (phi >4).")+
+    theme(strip.text = element_text(size = 14, face="bold")) -> pl
+  png("output/figs/sed.ts.psahires2.png", width=14,height = 14,units = "in",res=ppi)
+  print(pl)
+  
+  
