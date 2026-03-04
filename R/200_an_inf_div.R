@@ -682,32 +682,49 @@ tic("Time series plots")
 dfdiv$shore <- factor(dfdiv$shore, levels = c("Mid","Low"))
 dfdiv$zone1 <- factor(dfdiv$zone1,levels = c("Above","Inside","Inside2","Below","Wash"))
 dfts <- dfdiv %>% 
-  filter(.,is.na(mesh) | mesh=="1.0mm") %>% 
-  filter(.,zone1 != "Wash")
+  filter(.,is.na(mesh) | mesh=="1.0mm") #%>% 
+  # filter(.,zone1 != "Wash")
+
+zones <- unique(dfts$zone1)
+bg_cols <- cbPaletteFill[c(1:4,7)]
+bg_cols <- setNames(bg_cols[seq_along(zones)], zones)
+
+strip_elems <- lapply(zones, function(z)
+  element_rect(fill = bg_cols[[z]], color = "black", linewidth = 1)
+)
 
 ### LOG density ####
 N <- ggplot(data = dfts, aes(y = log(Nm2+1), x = year, fill = zone1)) +
-  geom_hline(yintercept = mean(log(dfts$N+1),na.rm = TRUE),colour="grey",linetype="dashed")+
-  geom_hline(yintercept = min(log(dfts$N+1),na.rm = TRUE),colour="grey",linetype="dotted")+
-  geom_hline(yintercept = max(log(dfts$N+1),na.rm = TRUE),colour="grey",linetype="dotted")+
+  # geom_hline(yintercept = mean(log(dfts$N+1),na.rm = TRUE),colour="grey",linetype="dashed")+
+  # geom_hline(yintercept = min(log(dfts$N+1),na.rm = TRUE),colour="grey",linetype="dotted")+
+  # geom_hline(yintercept = max(log(dfts$N+1),na.rm = TRUE),colour="grey",linetype="dotted")+
   geom_point(alpha=0.5)+
   # geom_boxplot(aes(group=year))+
   # geom_smooth(method = "loess", colour = "red", span = .9)+
   geom_smooth(method = "gam", colour = "red", span = .9)+
-  facet_grid(shore~zone1)+
+  # facet_grid(shore~zone1)+
+  # facet_grid(shore~zone1)+
+  ggh4x::facet_grid2(
+    rows = vars(shore),
+    cols = vars(zone1),
+    strip = strip_themed(
+      background_x = strip_elems)
+  )+
   scale_colour_manual(name = "", values=cbPalette)+
-  scale_fill_manual(name = "", values=cbPalette)+
+  scale_fill_manual(name = "", values=cbPalette[c(1:4,7)])+
   xlab("Year") + ylab(bquote("Log faunal density"))+
   scale_x_continuous(breaks = seq(1996, 2024, by = 4))+
   coord_cartesian(ylim=c(0,NA))+
   theme(legend.position="none",
-        strip.text.x = element_text(size = 12),
-        strip.text.y = element_text(size = 12),
-        axis.text.x = element_text(angle = 270,hjust=1,vjust=0.5))
+        axis.title = element_text(face=2),
+        strip.text = element_text(size = 12,face=2),
+        axis.text.x = element_text(angle = 270,hjust=1,vjust=0.5,
+                                   face=2,size=12),
+        )
 
 # png(file = "output/figs/inf.ts.logN.1996_loess_bx.png",
 #     width=12*ppi, height=6*ppi, res=ppi)
-png(file = "output/figs/inf.ts.logN.1996_loess_pt.png",
+png(file = "figs/inf.ts.logN.1996_loess_pt.png",
     width=12*ppi, height=6*ppi, res=ppi)
 # png(file = "output/figs/inf.ts.logN.1996_loess.png",
 #     width=12*ppi, height=6*ppi, res=ppi)
@@ -717,26 +734,38 @@ rm(N)
 
 ### species ####
 S <- ggplot(data = dfts, aes(y = S, x = year, fill = zone1))+
-  geom_hline(yintercept = mean(dfts$S,na.rm = TRUE),colour="grey",linetype="dashed")+
-  geom_hline(yintercept = min(dfts$S,na.rm = TRUE),colour="grey",linetype="dotted")+
-  geom_hline(yintercept = max(dfts$S,na.rm = TRUE),colour="grey",linetype="dotted")+
+  # geom_hline(yintercept = mean(dfts$S,na.rm = TRUE),colour="grey",linetype="dashed")+
+  # geom_hline(yintercept = min(dfts$S,na.rm = TRUE),colour="grey",linetype="dotted")+
+  # geom_hline(yintercept = max(dfts$S,na.rm = TRUE),colour="grey",linetype="dotted")+
   geom_point(alpha=0.5)+#geom_boxplot(aes(group=year))+
   # geom_smooth(method = "loess", colour = "red", span = .9)+
   geom_smooth(method = "gam", colour = "red", span = .9)+
-  facet_grid(shore~zone1)+
+  # facet_grid(shore~zone1)+
+  ggh4x::facet_grid2(
+    rows = vars(shore),
+    cols = vars(zone1),
+    strip = strip_themed(
+      background_x = strip_elems)
+  )+
   scale_colour_manual(name = "", values=cbPalette)+
-  scale_fill_manual(name = "", values=cbPalette)+
-  scale_x_continuous(breaks = seq(1996, 2024, by = 4))+
+  scale_fill_manual(name = "", values=cbPalette[c(1:4,7)])+
+  scale_x_continuous(breaks = seq(1996, 2025, by = 4))+
   xlab("Year") + ylab(bquote("Taxon richness"))+
+  # theme(legend.position="none",
+  #       strip.text.x = element_text(size = 12),
+  #       strip.text.y = element_text(size = 12),
+  #       axis.text.x = element_text(angle = 270,hjust=1,vjust=0.5))+
   theme(legend.position="none",
-        strip.text.x = element_text(size = 12),
-        strip.text.y = element_text(size = 12),
-        axis.text.x = element_text(angle = 270,hjust=1,vjust=0.5))+
+        axis.title = element_text(face=2),
+        strip.text = element_text(size = 12,face=2),
+        axis.text.x = element_text(angle = 270,hjust=1,vjust=0.5,
+                                   face=2,size=12),
+  )+
   coord_cartesian(ylim=c(0,NA))
 
 # png(file = "output/figs/inf.ts.S.1996_loess_bx.png",
 #     width=12*ppi, height=6*ppi, res=ppi)
-png(file = "output/figs/inf.ts.S.1996_loess_pt.png",
+png(file = "figs/inf.ts.S.1996_loess_pt.png",
     width=12*ppi, height=6*ppi, res=ppi)
 # png(file = "output/figs/inf.ts.S.1996_gam.png",
 #     width=12*ppi, height=6*ppi, res=ppi)
@@ -746,108 +775,97 @@ rm(S)
 
 ### shannon ####
 H <- ggplot(data = dfts, aes(y = H, x = year, fill = zone1))+
-  geom_hline(yintercept = mean(dfts$H,na.rm = TRUE),colour="grey",linetype="dashed")+
-  geom_hline(yintercept = min(dfts$H,na.rm = TRUE),colour="grey",linetype="dotted")+
-  geom_hline(yintercept = max(dfts$H,na.rm = TRUE),colour="grey",linetype="dotted")+
+  # geom_hline(yintercept = mean(dfts$H,na.rm = TRUE),colour="grey",linetype="dashed")+
+  # geom_hline(yintercept = min(dfts$H,na.rm = TRUE),colour="grey",linetype="dotted")+
+  # geom_hline(yintercept = max(dfts$H,na.rm = TRUE),colour="grey",linetype="dotted")+
   geom_boxplot(aes(group=year))+
   # geom_smooth(method = "loess", colour = "red", span = .9)+
   geom_smooth(method = "gam", colour = "red", span = .9)+
-  facet_grid(shore~zone1)+
+  # facet_grid(shore~zone1)+
+  ggh4x::facet_grid2(
+    rows = vars(shore),
+    cols = vars(zone1),
+    strip = strip_themed(
+      background_x = strip_elems)
+    )+
   scale_colour_manual(name = "", values=cbPalette)+
-  scale_fill_manual(name = "", values=cbPalette)+
+  scale_fill_manual(name = "", values=cbPalette[c(1:4,7)])+
   xlab("Year") + ylab(bquote("Shannon entropy"))+
   theme(legend.position="none",
-        strip.text.x = element_text(size = 12),
-        strip.text.y = element_text(size = 12),
-        axis.text.x = element_text(angle = 270,hjust=1,vjust=0.5))+
+        axis.title = element_text(face=2),
+        strip.text = element_text(size = 12,face=2),
+        axis.text.x = element_text(angle = 270,hjust=1,vjust=0.5,
+                                   face=2,size=12),
+  )+
   scale_x_continuous(breaks = seq(1996, 2024, by = 4))+
   coord_cartesian(ylim=c(0,NA))
 
-png(file = "output/figs/inf.ts.H.1996_loess.png",
+png(file = "figs/inf.ts.H.1996_loess.png",
     width=12*ppi, height=6*ppi, res=ppi)
-# png(file = "output/figs/inf.ts.H.1996_gam.png",
-#     width=12*ppi, height=6*ppi, res=ppi)
 print(H);
 dev.off();
 rm(H)
 
 ### Pielou ####
 J <- ggplot(data = dfts, aes(y = J, x = year, fill = zone1))+
-  geom_hline(yintercept = mean(dfts$J,na.rm = TRUE),colour="grey",linetype="dashed")+
-  geom_hline(yintercept = min(dfts$J,na.rm = TRUE),colour="grey",linetype="dotted")+
-  geom_hline(yintercept = max(dfts$J,na.rm = TRUE),colour="grey",linetype="dotted")+
+  # geom_hline(yintercept = mean(dfts$J,na.rm = TRUE),colour="grey",linetype="dashed")+
+  # geom_hline(yintercept = min(dfts$J,na.rm = TRUE),colour="grey",linetype="dotted")+
+  # geom_hline(yintercept = max(dfts$J,na.rm = TRUE),colour="grey",linetype="dotted")+
   geom_boxplot(aes(group=year))+
   # geom_smooth(method = "gam", colour = "red", span = .9)+
-  geom_smooth(method = "loess", colour = "red", span = .9)+
-  facet_grid(shore~zone1)+
+  geom_smooth(method = "gam", colour = "red", span = .9)+
+  ggh4x::facet_grid2(
+    rows = vars(shore),
+    cols = vars(zone1),
+    strip = strip_themed(
+      background_x = strip_elems)
+  )+
   scale_colour_manual(name = "", values=cbPalette)+
-  scale_fill_manual(name = "", values=cbPalette)+
+  scale_fill_manual(name = "", values=cbPalette[c(1:4,7)])+
   xlab("Year") + ylab(bquote("Pielou's evenness"))+
   theme(legend.position="none",
-        strip.text.x = element_text(size = 12),
-        strip.text.y = element_text(size = 12),
-        axis.text.x = element_text(angle = 270,hjust=1,vjust=0.5))+
+        axis.title = element_text(face=2),
+        strip.text = element_text(size = 12,face=2),
+        axis.text.x = element_text(angle = 270,hjust=1,vjust=0.5,
+                                   face=2,size=12),
+        )+
   scale_x_continuous(breaks = seq(1996, 2024, by = 4))+
   coord_cartesian(ylim=c(0,NA))
 
-png(file = "output/figs/inf.ts.J.1996_loess.png",
+png(file = "figs/inf.ts.J.1996_loess.png",
     width=12*ppi, height=6*ppi, res=ppi)
-# png(file = "output/figs/inf.ts.J.1996_gam.png",
-# width=12*ppi, height=6*ppi, res=ppi)
 print(J);
 dev.off();
 rm(J)
 
-### Margalef ####
-# d <- ggplot(data = dfts, aes(y = d, x = year, fill = zone1))+
-# geom_hline(yintercept = mean(dfts$d,na.rm = TRUE),colour="grey",linetype="dashed")+
-# geom_hline(yintercept = min(dfts$d,na.rm = TRUE),colour="grey",linetype="dotted")+
-# geom_hline(yintercept = max(dfts$d,na.rm = TRUE),colour="grey",linetype="dotted")+
-# geom_boxplot(aes(group=year))+
-# # geom_smooth(method = "loess", colour = "red", span = .9)+
-#   geom_smooth(method = "gam", colour = "red", span = .9)+
-# facet_grid(shore~zone1)+
-# scale_colour_manual(name = "", values=cbPalette)+
-# scale_fill_manual(name = "", values=cbPalette)+
-# xlab("Year") + ylab(bquote("Margalef's richness"))+
-#   ylim(0,2)+
-# theme(legend.position="none",
-# strip.text.x = element_text(size = 12),
-# strip.text.y = element_text(size = 12),
-# axis.text.x = element_text(angle = 270,hjust=1,vjust=0.5))+
-# scale_x_continuous(breaks = seq(2007, 2023, by = 2))+
-# coord_cartesian(ylim=c(0,NA))
-# 
-# png(file = "output/figs/inf.ts.d.1996_gam.png",
-# width=12*ppi, height=6*ppi, res=ppi)
-# # png(file = "output/figs/inf.ts.d.1996_loess.png",
-# #     width=12*ppi, height=6*ppi, res=ppi)
-# print(d);
-# dev.off();
-# rm(d)
-
 ### log biomass_m2 ####
 d <- ggplot(data = dfts, aes(y = log(biom+1), x = year, fill = zone1))+
-  geom_hline(yintercept = mean(log(dfts$biom+1),na.rm = TRUE),colour="grey",linetype="dashed")+
-  geom_hline(yintercept = min(log(dfts$biom+1),na.rm = TRUE),colour="grey",linetype="dotted")+
-  geom_hline(yintercept = max(log(dfts$biom+1),na.rm = TRUE),colour="grey",linetype="dotted")+
+  # geom_hline(yintercept = mean(log(dfts$biom+1),na.rm = TRUE),colour="grey",linetype="dashed")+
+  # geom_hline(yintercept = min(log(dfts$biom+1),na.rm = TRUE),colour="grey",linetype="dotted")+
+  # geom_hline(yintercept = max(log(dfts$biom+1),na.rm = TRUE),colour="grey",linetype="dotted")+
   geom_boxplot(aes(group=year))+
-  geom_smooth(method = "loess", colour = "red", span = .9)+
+  geom_smooth(method = "gam", colour = "red", span = .9)+
   # geom_smooth(method = "gam", colour = "red", span = .9)+
-  facet_grid(shore~zone1)+
+  ggh4x::facet_grid2(
+    rows = vars(shore),
+    cols = vars(zone1),
+    strip = strip_themed(
+      background_x = strip_elems)
+  )+
   scale_colour_manual(name = "", values=cbPalette)+
-  scale_fill_manual(name = "", values=cbPalette)+
+  scale_fill_manual(name = "", values=cbPalette[c(1:4,7)])+
   xlab("Year") + ylab(bquote("log(Biomass)"))+
   scale_x_continuous(breaks = seq(1996, 2024, by = 4))+
   coord_cartesian(ylim=c(0,NA))+
   theme(legend.position="none",
-        strip.text.x = element_text(size = 12),
-        strip.text.y = element_text(size = 12),
-        axis.text.x = element_text(angle = 270,hjust=1,vjust=0.5))
-
+        axis.title = element_text(face=2),
+        strip.text = element_text(size = 12,face=2),
+        axis.text.x = element_text(angle = 270,hjust=1,vjust=0.5,
+                                   face=2,size=12),
+  )
 # png(file = "output/figs/inf.ts.logbiom.1996_gam.png",
 # width=12*ppi, height=6*ppi, res=ppi)
-png(file = "output/figs/inf.ts.logbiom.1996_loess.png",
+png(file = "figs/inf.ts.logbiom.1996_loess.png",
     width=12*ppi, height=6*ppi, res=ppi)
 print(d);
 dev.off();
