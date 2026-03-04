@@ -127,7 +127,7 @@ strip_elems <- lapply(zones, function(z)
 #     width=12*ppi, height=6*ppi, res=ppi)
 df %>% 
   filter(.,type=="cone") %>% 
-  filter(., zone1 != "Wash") %>%
+  # filter(., zone1 != "Wash") %>%
   droplevels(.) %>% 
   mutate(value = as.numeric(value)) %>% 
   filter(., value >= 0) %>% 
@@ -137,11 +137,9 @@ df %>%
   geom_vline(xintercept = seq(2008,cur.yr,by=1),linetype=2, colour="lightgrey")+
   geom_boxplot(aes(group=year),outlier.shape = NA,show.legend = FALSE)+
   geom_jitter(width = 0.1, height = 0,alpha=0.3,show.legend = FALSE)+
-  # geom_smooth(method = "loess", colour = "red", span = .9)+
   geom_smooth(method = "gam", colour = "red", #span = .9
               show.legend = FALSE
   )+
-  # facet_grid(shore~zone1)+
   ggh4x::facet_grid2(
     rows = vars(shore),
     cols = vars(zone1),
@@ -156,17 +154,7 @@ df %>%
   labs(title = paste0("Sediment compaction recorded since 2008 as part of the SFGPBM programme"),
        #subtitle = "Higher values indicate more compacted sediments.\nRed lines indicate generalised additive model trend"
        )+
-  # theme(
-  #   legend.position="none",
-  #   axis.title.x = element_blank(),
-  #   axis.text.y = element_text(size = 12),
-  #   axis.text.x = element_text(size = 12, face = 2),
-  #   axis.title.y = element_text(size = 14),
-  #   strip.text.x = element_text(size = 14),
-  #   strip.text.y = element_text(size = 14),
-  #   strip.text = element_text(face="bold"),
-  #   strip.background = element_rect(color = "black",fill = "grey95", size = 1),
-    theme(
+  theme(
       plot.title = element_text(face=2,size=18),
       plot.subtitle = element_text(face=2,size=12),
       plot.caption = element_text(face=2,size=12),
@@ -175,10 +163,7 @@ df %>%
       axis.text.y = element_text(face=2),
       axis.text.x = element_text(face=2,size = 12),
       strip.text = element_text(face=2,size=14),
-      strip.background = element_rect(color = "black",fill = "grey95", size = 1),
-    # )
-    
-    ) -> pl_com_A
+      ) -> pl_com_A
 # dev.off()
 
 ## plot model smooths ####
@@ -354,6 +339,13 @@ pl_com_A/pl_com_B + patchwork::plot_annotation(tag_levels = "A") +
   theme(plot.tag = element_text(face = 2, size = 18))
 dev.off()
 
+png(file = "figs/sed.ts.mor.pen.png",
+    width = 15 * ppi,
+    height = 8 * ppi,
+    res = ppi)
+pl_com_A
+dev.off()
+
 ## remove items beginning with "com" to avoid cross-contamination of outputs
 rm(list = ls(pattern = "^com"))
 rm(df_tm_com, pl_com_A,pl_com_B)
@@ -421,7 +413,7 @@ sm %>%
 ## plot raw values ####
 df %>% 
   filter(.,type=="angle") %>% 
-  filter(., zone1 != "Wash") %>%
+  # filter(., zone1 != "Wash") %>%
   droplevels(.) %>% 
   mutate(value = as.numeric(value)) %>% 
   filter(., value >= 0) %>% 
@@ -431,10 +423,8 @@ df %>%
   geom_vline(xintercept = seq(2008,cur.yr,by=1),linetype=2, colour="lightgrey")+
   geom_boxplot(aes(group=year),outlier.shape = NA)+
   geom_jitter(width = 0.1, height = 0,alpha=0.3)+
-  # geom_smooth(method = "loess", colour = "red", span = .9)+
-  geom_smooth(method = "gam", colour = "red", #span = .9
-  )+
-  # facet_grid(shore~zone1)+
+  geom_smooth(method = "gam", colour = "red"
+              )+
   ggh4x::facet_grid2(
     rows = vars(shore),
     cols = vars(zone1),
@@ -443,11 +433,9 @@ df %>%
   )+
   scale_colour_manual(name = "", values=cbPalette)+
   scale_fill_manual(name = "", values=cbPaletteFill)+
-  # scale_x_continuous(breaks = seq(2008, cur.yr, by = 4))+
   scale_y_continuous(limits = c(0, NA), expand = c(0, 0))+
   xlab("Year") + ylab("Observed beach slope")+
   labs(title = paste0("Beach slopes recorded since 2008 as part of the SFGPBM programme"),
-       # subtitle = "Higher values indicate more compacted sediments.\nRed lines indicate generalised additive model trend"
        )+
   theme(
     plot.title = element_text(face=2,size=18),
@@ -459,18 +447,7 @@ df %>%
     axis.text.y = element_text(face=2),
     axis.text.x = element_text(face=2,size = 12),
     strip.text = element_text(face=2,size=14),
-    strip.background = element_rect(color = "black",fill = "grey95", size = 1),  # theme(
-  #   
-  #   legend.position="none",
-  #   axis.title.x = element_blank(),
-  #   axis.text.y = element_text(size = 12),
-  #   axis.text.x = element_text(size = 12, face = 2),
-  #   axis.title.y = element_text(size = 14),
-  #   strip.text.x = element_text(size = 14),
-  #   strip.text.y = element_text(size = 14),
-  #   strip.text = element_text(face="bold"),
-  #   strip.background = element_rect(color = "black",fill = "grey95", size = 1),
-  ) -> pl_ang_A
+    ) -> pl_ang_A
 
 ##########
 
@@ -647,7 +624,12 @@ pl_ang_A/pl_ang_B + patchwork::plot_annotation(tag_levels = "A") +
   theme(plot.tag = element_text(face = 2, size = 18))
 dev.off()
 
-
+png(file = "figs/sed.ts.mor.ang.png",
+    width = 15 * ppi,
+    height = 8 * ppi,
+    res = ppi)
+pl_ang_A
+dev.off()
 
 ## remove items beginning with "com" to avoid cross-contamination of outputs
 rm(list = ls(pattern = "^com"))
