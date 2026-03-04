@@ -53,6 +53,11 @@ df0 %>%
   mutate(modality = sub("^[^_]*_", "", trt)) %>% 
   mutate(trt_lb = vegan::make.cepnames(Trait)
          ) %>% 
+  ## re-label Exoskeleton to include shelled
+  mutate(modality = case_when(
+    modality == "Exoskeleton" ~ "Exoskeleton/Shell",
+    modality != "Exoskeleton" ~ modality,
+  )) %>% #View()
   mutate(modality = factor(modality, levels = c(
     #Bioturbation
     "None","Surface_deposition","Diffusive_mixing",	"Downward_conveyer","Upward_conveyor",
@@ -67,7 +72,8 @@ df0 %>%
     #LivingHabit
     "Free_living","Burrow_dwelling","Tube_dwelling","Attached_to_substratum","Crevice_hole_under_stones","Epi_endo_biotic",
     #Morphology
-    "Crustose","Cushion","Exoskeleton","Soft","Stalked","Tunic",
+    "Crustose","Cushion",#"Exoskeleton",
+    "Exoskeleton/Shell","Soft","Stalked","Tunic",
     #Mobility
     "Sessile","Burrower","Crawl_creep_climb","Swim",
     #SedimentPosn
@@ -99,14 +105,17 @@ ggplot(dftmp,
          colour = modality,
          shape = modality,
        )) +
-  geom_line(size=1.5,alpha=0.7,
+  geom_line(linewidth=1.5,alpha=0.7,
             aes(linetype = modality)
             )+
   # geom_point(size=3)+
   # facet_grid(shore ~ zone1)+
   facet_grid2(shore ~ zone1, #ncol = 2,
               strip = strip_themed(background_x = strip_elems)) +
-  labs(title = trt_tmp)+
+  labs(title = trt_tmp,
+       caption = paste0(
+         "<b>Values indicate the relative proportion of traits within taxa observed at each shore height/nourishment zone<br>",
+         "This is based on presence-absence only, and does not incorporate the relative abundances of contributing taxa"))+
   scale_colour_manual(values = cbPalette3)+
   scale_y_continuous(breaks = c(0,1))+
   scale_linetype_manual(values = rep(c(1,3,2),4))+
@@ -120,7 +129,8 @@ ggplot(dftmp,
     legend.title = element_blank(),
     legend.text = element_text(face=2, size = 14),
     strip.background.y = element_rect(color = "black",fill = "grey95",
-                                      linewidth = 1)
+                                      linewidth = 1),
+    plot.caption = ggtext::element_markdown(size=12),
   ) -> pl
   png(
     file = paste0("figs/inf.Trt.ts.",unique(dftmp$trt_lb),".png"),
