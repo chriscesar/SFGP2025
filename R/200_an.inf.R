@@ -106,9 +106,9 @@ row.names(ord.data) <- paste0(df_prep$transect,
                               ".",df_prep$shore
                               )
 
-ord.data.run <- ord.data %>%
-  dplyr::select(.,-c(year,transect,shore,zone1,core.area_m2)) %>% 
-  dplyr::filter(rownames(.)!= "T8.Mid")
+# ord.data.run <- ord.data %>%
+#   dplyr::select(.,-c(year,transect,shore,zone1,core.area_m2)) %>% 
+#   dplyr::filter(rownames(.)!= "T8.Mid")
 colnames(ord.data) <-
   make.cepnames(colnames(ord.data)) #shorten names for display
 
@@ -244,9 +244,18 @@ write.csv(ano_intinf,
           row.names=TRUE)
 
 # MVABUND v1 ####
-cur_spp <- mvabund(df.cur.w.trm %>%
-                     select(-c(year,transect,shore,AFAUNAL,
-                               rep,zone1,core.area_m2)))
+# Make Inside:Low the reference
+df.cur.w.trm %>% 
+  mutate(shore = factor(shore, levels = c("Low","Mid")),
+         zone1 = factor(zone1, levels = c("Inside","Above","Inside2",
+                                          "Below","Wash"))) %>%
+  select(-c(year,transect,shore,AFAUNAL,
+                   rep,zone1,core.area_m2)) %>% #names()
+  mvabund(.) -> cur_spp
+
+# cur_spp <- mvabund(df.cur.w.trm %>%
+#                      select(-c(year,transect,shore,AFAUNAL,
+#                                rep,zone1,core.area_m2)))
 
 # cur_spp <- mvabund::mvabund(ord.data %>%
 #                               dplyr::select(.,
@@ -314,6 +323,8 @@ mvpl %>%
 dev.off()
 rm(min_value,max_value,min_order,max_order,orders_of_magnitude_covered,ttl,sbtt)
 
+## adjust levels to make Inside:Low the reference
+
 # mod1 <- manyglm(cur_spp~(df.cur %>% filter(., AFAUNAL > -999))$zone1, family="poisson")
 mod1 <- manyglm(cur_spp ~ df.cur.w.trm$zone1, family="poisson")
 plot(mod1)
@@ -324,7 +335,7 @@ mod2 <- manyglm(cur_spp ~ df.cur.w.trm$zone1*df.cur.w.trm$shore,
 plot(mod2)
 
 ### TO DO ####
-# mod2.summary <- summary(mod2)
+# tic("Summarise model");mod2.summary <- summary(mod2);toc(log=TRUE)
 #^^# TO DO #^^#
 
 # 
@@ -344,6 +355,10 @@ rm(mod1,mod2,mod2.summary,ttl,sbtt,min_value,cur_spp,
 
 # group and calculate means
 df.cur.w.trm %>% 
+  #refactor to make Inside:Low the reference
+  mutate(shore = factor(shore, levels = c("Low","Mid")),
+         zone1 = factor(zone1, levels = c("Inside","Above","Inside2",
+                                          "Below","Wash"))) %>% 
   ## first, lengthen data (maintaining zero values)
   pivot_longer(.,
                cols = -c(year:core.area_m2),
@@ -355,10 +370,46 @@ df.cur.w.trm %>%
     rep)) %>% 
   group_by(across(c(!abund)
   )) %>% 
-  summarise(.,abund=sum(abund), .groups = "drop") %>% ungroup() -> df.mean
-### add pivot wide
+  summarise(.,abund=sum(abund), .groups = "drop") %>% ungroup() %>% 
+  ### add pivot wide
+  pivot_wider(names_from = taxon,values_from = abund) -> df.mean
 
-cur_spp <- mvabund(df.cur.w.trm[,-c(1:7)])
+
+cur_spp_all <- mvabund(df.mean %>% 
+                     select(-c(year,transect,shore,zone1,AFAUNAL))
+                   )
+
+cur_spp_lnc <- mvabund(df.mean %>%
+                         filter(zone1 != "Wash") %>% 
+                         select(-c(year,transect,shore,zone1,AFAUNAL))
+                         )
+
+df.mean_lnc <- droplevels(df.mean %>% filter(zone1 != "Wash"))
+
+## Run MANYGLM
+mod1 <- manyglm(cur_spp_lnc ~ df.mean_lnc$zone1, family="poisson")
+plot(mod1)
+
+# mod2 <- manyglm(cur_spp ~ (df.cur %>% filter(., AFAUNAL > -999))$zone1*(df.cur %>% filter(., AFAUNAL > -999))$shore, family="negative_binomial")
+mod2 <- manyglm(cur_spp_lnc ~ df.mean_lnc$zone1*df.mean_lnc$shore,
+                family = "negative_binomial")
+plot(mod2) #better fit
+
+### TO DO ####
+tic("Summarise model");mod2.summary <- summary(mod2);toc(log=TRUE)
+#^^# TO DO #^^#
+
+tic("MANYANOVA model")
+anova_mod2 <- mvabund::anova.manyglm(mod2,p.uni = "adjusted");toc(log=TRUE)
+saveRDS(anova_mod2,file="output/models/inf.2025.mvabund.mod2.Rdat")
+saveRDS(mod2.summary,file="output/models/inf.2025.mvabund.summary.mod2.Rdat")
+(res.binary <- readRDS("output/models/inf.2025.mvabund.mod2.Rdat"))
+(mvabund.mod.summary <- readRDS("output/models/inf.2025.mvabund.summary.mod2.Rdat"))
+rm(mod1,mod2,mod2.summary,ttl,sbtt,min_value,cur_spp,
+   max_value,mvpl,mvabund.mod.summary,
+   min_order,
+   max_order,
+   orders_of_magnitude_covered)
 
 #############################################################################
 ##########                  FROM HERE                  ######################
