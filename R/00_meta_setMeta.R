@@ -38,6 +38,29 @@ cbPaletteFill <- c( ### colourblind-friendly chart colour palette - lighter cols
   "#FFFE77"  #240, 228, 66
 )
 
+cbPalette3 <- c(
+  "#0072B2",
+  "#e79f00",
+  "#009E73",
+  "#9ad0f3",
+  "#A0A0A0" ,
+  "#D55E00" ,
+  "#CC79A7" ,
+  "#004738",
+  "#F0E442",
+  
+  "#003582",
+  "#744500",
+  "#DEAAC6",
+  "#FFFFFF",
+  "#556572",
+  "#A0A0A0" ,
+  "#683000" ,
+  "#664080" ,
+  "#701063",
+  "#807821"
+)
+
 ppi <- 300 #figure resolution
 cur.yr <- 2025 #current year
 
