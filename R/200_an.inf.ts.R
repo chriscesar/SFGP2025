@@ -169,8 +169,6 @@ dfltmp_MTG2 %>%
 ####
 # Extract polychaetes from dfl data and plot with lines for individual taxa
 
-
-
 dfltx %>% 
   mutate(zone1 = factor(zone1,
                         levels = c("Above","Inside",
