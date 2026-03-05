@@ -8,7 +8,7 @@ dfw$zone1 <- factor(dfw$zone1,levels=c("Above","Inside","Inside2","Below","Wash"
 
 ## load packages
 ld_pkgs <- c("tidyverse","ggplot2", "vegan", "lmerTest","ggpp","ggtext",
-             "mvabund", "patchwork","gllvm","tictoc")
+             "mvabund", "patchwork","gllvm","tictoc","ggh4x")
 vapply(ld_pkgs, library, logical(1L),
        character.only = TRUE, logical.return = TRUE)
 rm(ld_pkgs)
@@ -147,6 +147,14 @@ d[d$`Pr(>|t|)`<0.051,]
 rm(mod1,d,S_pl)
 
 # generate time series charts ####
+zones <- unique(dfw$zone1)
+# bg_cols <- cbPaletteFill[c(1:4)]
+bg_cols <- cbPaletteFill[c(1,4,2,3)]
+bg_cols <- setNames(bg_cols[seq_along(zones)], zones)
+
+strip_elems <- lapply(zones, function(z)
+  element_rect(fill = bg_cols[[z]], color = "black", linewidth = 1)
+)
 
 ### species ####
 S <- ggplot(data = dfw, aes(y = S, x = year, fill = zone1))+
@@ -154,29 +162,31 @@ S <- ggplot(data = dfw, aes(y = S, x = year, fill = zone1))+
   geom_hline(yintercept = min(dfw$S,na.rm = TRUE),colour="grey",linetype="dotted")+
   geom_hline(yintercept = max(dfw$S,na.rm = TRUE),colour="grey",linetype="dotted")+
   geom_point()+
-  #geom_boxplot(aes(group=year))+
-  # geom_jitter(alpha=0.6)+
-  geom_smooth(method = "loess", colour = "red", span = .9)+
-  # geom_smooth(method = "loess", span = .9, aes(group=mon, col=mon))+
-  # geom_smooth(method = "gam", colour = "red", span = .9)+
-  facet_grid(depth~zone1)+
+  geom_smooth(method = "gam", colour = "red")+
+  # facet_grid(depth~zone1)+
+  ggh4x::facet_grid2(
+    rows = vars(depth),
+    cols = vars(zone1),
+    strip = strip_themed(
+      background_x = strip_elems)
+  )+
   scale_colour_manual(name = "", values=cbPalette)+
   scale_fill_manual(name = "", values=cbPalette)+
   scale_x_continuous(breaks = seq(2011, 2025, by = 2))+
-  xlab("Year") + ylab(bquote("Taxon richness"))+
+  ylab(bquote("Taxon richness"))+
   theme(legend.position="none",
-        axis.title = element_text(face=2),
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(face=2),
         strip.text.x = element_text(size = 12,face=2),
         strip.text.y = element_text(size = 12,face=2),
-        axis.text.x = element_text(angle = 270,hjust=1,vjust=0.5))+
+        axis.text.x = element_text(angle = 270,hjust=1,
+                                   vjust=0.5,face=2, size = 14),
+        axis.text.y = element_text(face=2),
+        )+
   coord_cartesian(ylim=c(0,NA));S
 
-# png(file = "output/figs/epi.ts.S_loess_bx.png",
-#     width=12*ppi, height=6*ppi, res=ppi)
-png(file = "output/figs/epi.ts.S_loess_pt.png",
+png(file = "figs/epi.ts.S_gam_pt.png",
     width=12*ppi, height=6*ppi, res=ppi)
-# png(file = "output/figs/epi.ts.S_gam.png",
-#     width=12*ppi, height=6*ppi, res=ppi)
 print(S);
 dev.off();
 rm(S)
@@ -187,28 +197,31 @@ N <- ggplot(data = dfw, aes(y = log(N+1), x = year, fill = zone1))+
   geom_hline(yintercept = min(log(dfw$N+1),na.rm = TRUE),colour="grey",linetype="dotted")+
   geom_hline(yintercept = max(log(dfw$N+1),na.rm = TRUE),colour="grey",linetype="dotted")+
   geom_point()+
-  # geom_boxplot(aes(group=year))+
-  geom_smooth(method = "loess", colour = "red", span = .9)+
-  # geom_smooth(method = "gam", colour = "red", span = .9)+
-  facet_grid(depth~zone1)+
+  geom_smooth(method = "gam", colour = "red")+
+  # facet_grid(depth~zone1)+
+  ggh4x::facet_grid2(
+    rows = vars(depth),
+    cols = vars(zone1),
+    strip = strip_themed(
+      background_x = strip_elems)
+  )+
   scale_colour_manual(name = "", values=cbPalette)+
   scale_fill_manual(name = "", values=cbPalette)+
-  scale_x_continuous(breaks = seq(2011, 2023, by = 2))+
-  xlab("Year") + ylab(bquote(bold(Log[(n+1)]~Faunal~density)))+
-  #"Log""Faunal density"))+
+  scale_x_continuous(breaks = seq(2011, 2025, by = 2))+
+  ylab(bquote(bold(Log[(n+1)]~Faunal~density)))+
   theme(legend.position="none",
-        axis.title = element_text(face=2),
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(face=2),
         strip.text.x = element_text(size = 12,face=2),
         strip.text.y = element_text(size = 12,face=2),
-        axis.text.x = element_text(angle = 270,hjust=1,vjust=0.5))+
+        axis.text.x = element_text(angle = 270,hjust=1,
+                                   vjust=0.5,face=2, size=14),
+        axis.text.y = element_text(face=2),
+        )+
   coord_cartesian(ylim=c(0,NA));N
 
-# png(file = "output/figs/epi.ts.N_loess_bx.png",
-#     width=12*ppi, height=6*ppi, res=ppi)
-png(file = "output/figs/epi.ts.N_loess_pt.png",
+png(file = "figs/epi.ts.N_gam_pt.png",
     width=12*ppi, height=6*ppi, res=ppi)
-# png(file = "output/figs/epi.ts.S_gam.png",
-#     width=12*ppi, height=6*ppi, res=ppi)
 print(N);
 dev.off();
 rm(N)
@@ -339,7 +352,7 @@ ggplot() +
                shape = depth,
                fill = zone1,
                colour=mon),
-             size = 7,
+             size = 5,
              #show.legend = FALSE,
              stroke=1.5 #control border thickness of points
   ) +
@@ -364,6 +377,7 @@ ggplot() +
     plot.caption = element_markdown(lineheight = 1.2, face = 2),
     plot.title = element_markdown(face = 2),
     legend.title = element_text(face=2),
+    axis.title = element_text(face=2),
     )+
   guides(fill = guide_legend(override.aes = list(shape = 22)),
          colour = guide_legend(override.aes = list(shape=22)))
@@ -470,6 +484,27 @@ m3.sum <- readRDS("output/models/epi.2024.model3summary.Rdat")
 (anova_mod3 <- readRDS("output/models/epi.2024.mvabund_mod3.Rdat"))
 
 toc(log=TRUE)
+
+# combine depth and zone
+met$zone_dep <- paste0(met$zone1,"_",met$depth)
+## make inshore Inside the reference
+met$zone_dep <- factor(met$zone_dep,
+                       levels = c(
+                         "Inside_A","Inside_B","Inside_C" ,
+                         "Above_A","Above_B","Above_C",
+                         "Inside2_A","Inside2_C",
+                         "Below_A","Below_C"
+                       ))
+m4 <- mvabund::manyglm(mvabund::mvabund(cur_spp)~met$zone_dep,
+                       family = "negative.binomial")
+plot(m4)
+# m4.sum <- summary(m4)
+# saveRDS(m4.sum, file="output/models/epi.2025.model4summary.Rdat")
+m4.sum <- readRDS("output/models/epi.2025.model4summary.Rdat")
+
+# anova_mod4 <- mvabund::anova.manyglm(m4,p.uni = "adjusted")
+# saveRDS(anova_mod4,file="output/models/epi.2025.mvabund_mod4.Rdat")
+(anova_mod4 <- readRDS("output/models/epi.2025.mvabund_mod4.Rdat"))
 
 # PLOT ####
 nums <- ncol(dat)
