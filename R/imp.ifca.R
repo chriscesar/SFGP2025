@@ -3,7 +3,7 @@
 
 # Set up ####
 ## load packages ####
-ld_pkgs <- c("tidyverse","tictoc","patchwork","forecast","mgcv",
+ld_pkgs <- c("tidyverse","tictoc","patchwork","forecast","mgcv","ggh4x",
              "purrr")
 
 vapply(ld_pkgs, library, logical(1L),
@@ -115,7 +115,7 @@ ggplot(data = ifca, aes(x = year, y = tonnes, fill = bed))+
         strip.text.y = element_text(size = 12))+
   scale_colour_manual(name = "", values=cbPalette)+
   scale_fill_manual(name = "", values=cbPalette)+
-  scale_x_continuous(breaks = seq(2004, 2024, by = 2))+
+  scale_x_continuous(breaks = seq(2004, 2025, by = 2))+
   xlab("") + ylab("Cockle stock estimate (tonnes)")+
   labs(title="Estimated adult and juvenile cockle stock biomasses within 2 cockle beds in the north of The Wash",
        subtitle = "Data provided by the Eastern Inshore Fisheries and Conservation Authority",
@@ -177,6 +177,13 @@ pred_df <- pred_grid %>%
   )
 
 # Plot: points (observed) + smooth lines + 95% CI ribbons ####
+beds <- unique(ifca$bed)
+bg_cols <- cbPaletteFill[c(1,2)]
+bg_cols <- setNames(bg_cols[seq_along(beds)], beds)
+
+strip_elems <- lapply(beds, function(z)
+  element_rect(fill = bg_cols[[z]], color = "black", linewidth = 1)
+)
 png(file = "figs/ifca.class.ts.gam.png",
     width=14*ppi, height=8*ppi, res=ppi)
 ggplot() +
@@ -208,9 +215,13 @@ ggplot() +
     linewidth = 1
   ) +
   # facet_wrap(~ bed, scales = "free_y") +
-  facet_grid(class~bed)+
-  # scale_color_brewer(palette = "Dark2") +
-  # scale_fill_brewer(palette = "Dark2") +
+  # facet_grid(class~bed)+
+  ggh4x::facet_grid2(
+    rows = vars(class),
+    cols = vars(bed),
+    strip = strip_themed(
+      background_x = strip_elems)
+  )+
   xlab("") + ylab("Cockle stock estimate (tonnes)")+
   labs(title="Estimated adult and juvenile cockle stock biomasses within 2 cockle beds in the north of The Wash",
        subtitle = "Data provided by the Eastern Inshore Fisheries and Conservation Authority",
