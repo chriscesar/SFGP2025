@@ -5,7 +5,8 @@
 # Set up ####
 ### load packages ####
 ld_pkgs <- c("tidyverse","tictoc","ggthemes","ggh4x","patchwork",
-             "ggridges","lme4","lmerTest")
+             "ggridges","lme4","lmerTest","emmeans","multcomp",
+             "multcompView")
 vapply(ld_pkgs, library, logical(1L),
        character.only = TRUE, logical.return = TRUE)
 rm(ld_pkgs)
@@ -241,6 +242,31 @@ ggplot(.,
 dev.off()
 
 # sorting_TS ####
+df_sort <- df0 %>% 
+  filter(method == "5cm") %>% 
+  filter(zone1 != "Wash") %>% 
+  filter(Year == cur.yr) %>% 
+  mutate(shore = factor(shore, levels = c("Surf","Low","Mid","Upper")))
+
+summary(mod1 <- lmer(`Folk and Ward (phi) SORTING` ~ shore*zone1 +(1|transect),
+           data=df_sort))
+anova(mod1)
+
+# Pairwise post‑hoc comparisons
+emmeans(mod1, pairwise ~ shore)
+emmeans(mod1, pairwise ~ zone1)
+
+# Pairwise comparisons of shore heights within zones
+height_within_mgmt <- emmeans(mod1, 
+                              pairwise ~ shore | zone1)
+
+height_within_mgmt
+plot(height_within_mgmt, comparison = TRUE)+
+  theme(axis.title.y = element_blank(),
+        axis.text = element_text(face=2)
+  )
+
+
 png(
   file = "figs/sed_sort_ts.png",
   width = 15 * ppi,
