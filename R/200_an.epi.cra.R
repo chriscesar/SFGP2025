@@ -8,7 +8,7 @@
 source("R/100_imp.epi0.R")
 
 #### load packages ####
-ld_pkgs <- c("tidyverse","lmerTest", "ggridges","tictoc")
+ld_pkgs <- c("tidyverse","lmerTest", "ggridges","tictoc","ggh4x")
 vapply(ld_pkgs, library, logical(1L),
        character.only = TRUE, logical.return = TRUE)
 rm(ld_pkgs)
@@ -194,13 +194,28 @@ dfw$date <- as.Date(paste(dfw$day,match(dfw$month,month.abb),dfw$year,
 
 png(file = "figs/epi.cra.abnd.ts.png",
     width=12*ppi, height=6*ppi, res=ppi)
+
+## set strip_text values ####
+zones <- unique(dfw$zone1)
+bg_cols <- cbPaletteFill[c(1,4,2,3)]
+bg_cols <- setNames(bg_cols[seq_along(zones)], zones)
+
+strip_elems <- lapply(zones, function(z)
+  element_rect(fill = bg_cols[[z]], color = "black", linewidth = 1)
+)
 dfw %>% 
-  filter(.,year<cur.yr) %>%
+  # filter(.,year<cur.yr) %>%
   ggplot(.,aes(x=date,
                #y=Crangon_all))+
                y=log10(Crangon_all+1)))+
   geom_point()+
-  facet_grid(depth~zone1)+
+  ggh4x::facet_grid2(
+    rows = vars(depth),
+    cols = vars(zone1),
+    strip = strip_themed(
+      background_x = strip_elems)
+  )+
+  # facet_grid(depth~zone1)+
   geom_smooth(
     # method="gam",
     method="gam",
@@ -208,11 +223,18 @@ dfw %>%
     show.legend = FALSE)+
   scale_colour_manual(values=cbPalette)+
   ylab("Log10(Crangon abundance+1)")+
+  labs(
+    title = "Log Crangon abundances",
+    caption = "Lines represent generalised additive model predictions",
+      )+
   theme(legend.title = element_blank(),
         axis.title.x = element_blank(),
         axis.text = element_text(face=2,size=12),
         strip.text = element_text(face="bold",size = 14),
-        axis.title.y = element_text(face="bold"))
+        axis.title.y = element_text(face="bold"),
+        plot.title = element_text(face=2),
+        plot.caption = element_text(face=2),
+        )
 dev.off()
 
 # Compare length vs zone ####
@@ -220,9 +242,15 @@ dev.off()
 df$zone1 <- factor(df$zone1,levels=c("Above","Inside","Inside2","Below"))
 
 ### plot carapaces - current ####
-png(file = "output/figs/epi.shr.len.2024.png",
+png(file = "output/figs/epi.shr.len.2025.png",
     width=12*ppi, height=6*ppi, res=ppi)
-i <- ggplot(data=df, aes(x = zone1, y=len.mm, fill = zone1))+
+i <- ggplot(
+  data=df,
+  aes(
+    x = zone1,
+    y=len.mm,
+    fill = zone1)
+  )+
   # geom_violin(show.legend=FALSE)+
   geom_boxplot(outlier.colour = NA,show.legend = FALSE,varwidth = TRUE)+
   geom_jitter(height = 0, width = 0.25, alpha = 0.25,show.legend = FALSE)+
@@ -239,36 +267,61 @@ i <- ggplot(data=df, aes(x = zone1, y=len.mm, fill = zone1))+
 # coord_flip()
 print(i)
 dev.off()
+rm(i)
 
-pdf("output/figs/epi.shr.len.2023.pdf", width=14,height = 8)
-print(i)
-dev.off();rm(i)
 
 
 ### plot carapaces - TS ####
-# ggplot(data=df_cra_ts,aes(x=len.mm,y=as.factor(year)))+
-#   facet_grid(zone1~site)+
-#   geom_density_ridges(scale=4, alpha=0.7)+
-#   scale_y_discrete(limits=rev)+
-#   scale_fill_manual(values = cbPalette)
-# 
-# png(file = "output/figs/epi/epi.shr.len.ts.png",
-#     width=12*ppi, height=6*ppi, res=ppi)
-# i <- ggplot(data=df_cra_ts, aes(x = year, y=len.mm, fill = zone1))+
-#   # geom_violin(show.legend=FALSE)+
-#   
-#   
-#   
-#   geom_boxplot(outlier.colour = NA,show.legend = FALSE,varwidth = TRUE)+
-#   geom_jitter(height = 0, width = 0.25, alpha = 0.25,show.legend = FALSE)+
-#   theme(legend.title=element_blank())+
-#   scale_fill_manual(values=cbPalette)+
-#   theme(legend.title=element_blank())+
-#   facet_wrap(~site)+
-#   xlab("")+ylab("Carapace length (mm)")+ylim(0,NA)#+
-# # coord_flip()
-# print(i)
-# dev.off()
+
+ggplot(data=df_cra_ts,aes(x=len.mm,y=as.factor(year)))+
+  facet_grid(zone1~site)+
+  geom_density_ridges(scale=4, alpha=0.7)+
+  scale_y_discrete(limits=rev)+
+  scale_fill_manual(values = cbPalette)
+
+## set strip_text values ####
+zones <- unique(dfw$zone1)
+bg_cols <- cbPaletteFill[c(1,2,3,4)]
+bg_cols <- setNames(bg_cols[seq_along(zones)], zones)
+
+strip_elems <- lapply(zones, function(z)
+  element_rect(fill = bg_cols[[z]], color = "black", linewidth = 1)
+)
+
+png(file = "figs/epi.shr.len.ts.png",
+    width=12*ppi, height=6*ppi, res=ppi)
+i <- ggplot(data=df_cra_ts %>% 
+              mutate(zone1 = factor(zone1,levels=c(
+                "Above","Inside","Inside2","Below")
+              )),
+              aes(x = year, y=len.mm_use#, fill = zone1)
+                                )
+            )+
+  geom_jitter(height = 0, width = 0.25, alpha = 0.05,
+              show.legend = FALSE)+
+  scale_fill_manual(values=cbPalette)+
+  theme(legend.title=element_blank())+
+  # facet_wrap(~site)+
+  ggh4x::facet_grid2(
+    rows = vars(site),
+    cols = vars(zone1),
+    strip = strip_themed(
+      background_x = strip_elems)
+  )+
+  xlab("")+ylab("Carapace length (mm)")+ylim(0,NA)+
+  scale_colour_manual(values = cbPalette[1:4])+
+  geom_smooth(method="gam",show.legend = FALSE,
+              aes(
+                colour = zone1
+              ))+
+  theme(
+    legend.title=element_blank(),
+    axis.text = element_text(face=2),
+    axis.title = element_text(face=2),
+    strip.text = element_text(face=2),
+  )
+print(i)
+dev.off()
 # 
 # pdf("output/figs/epi/epi.shr.len.2022.pdf", width=14,height = 8)
 # print(i)
