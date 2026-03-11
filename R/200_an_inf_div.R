@@ -19,7 +19,8 @@ df_pre <- as_tibble(read.csv(paste0(fol,"inf_ts_div_pre2007.csv")))
 
 ### load packages
 ld_pkgs <- c("tidyverse", "ggplot2", "vegan", "lmerTest", "patchwork","tictoc",
-             "emmeans","sjPlot","sjmisc","sjlabelled","stargazer","ggridges")
+             "emmeans","sjPlot","sjmisc","sjlabelled","stargazer","ggridges",
+             "ggtext","ggh4x")
 vapply(ld_pkgs, library, logical(1L),
        character.only = TRUE, logical.return = TRUE)
 rm(ld_pkgs)
@@ -686,7 +687,7 @@ dfts <- dfdiv %>%
   # filter(.,zone1 != "Wash")
 
 zones <- unique(dfts$zone1)
-bg_cols <- cbPaletteFill[c(1:4,7)]
+bg_cols <- cbPaletteFill[c(1,4,2,3,7)]
 bg_cols <- setNames(bg_cols[seq_along(zones)], zones)
 
 strip_elems <- lapply(zones, function(z)
@@ -694,7 +695,7 @@ strip_elems <- lapply(zones, function(z)
 )
 
 ### LOG density ####
-N <- ggplot(data = dfts, aes(y = log(Nm2+1), x = year, fill = zone1)) +
+(N <- ggplot(data = dfts, aes(y = log(Nm2+1), x = year, fill = zone1)) +
   # geom_hline(yintercept = mean(log(dfts$N+1),na.rm = TRUE),colour="grey",linetype="dashed")+
   # geom_hline(yintercept = min(log(dfts$N+1),na.rm = TRUE),colour="grey",linetype="dotted")+
   # geom_hline(yintercept = max(log(dfts$N+1),na.rm = TRUE),colour="grey",linetype="dotted")+
@@ -720,7 +721,7 @@ N <- ggplot(data = dfts, aes(y = log(Nm2+1), x = year, fill = zone1)) +
         strip.text = element_text(size = 12,face=2),
         axis.text.x = element_text(angle = 270,hjust=1,vjust=0.5,
                                    face=2,size=12),
-        )
+        ))
 
 # png(file = "output/figs/inf.ts.logN.1996_loess_bx.png",
 #     width=12*ppi, height=6*ppi, res=ppi)
