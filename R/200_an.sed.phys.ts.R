@@ -4,7 +4,7 @@
 
 # Set up ####
 ### load packages ####
-ld_pkgs <- c("tidyverse","ggthemes","lmerTest","effects","tictoc",
+ld_pkgs <- c("tidyverse","ggthemes","lmerTest","effects","tictoc","ggh4x",
              "sjPlot","visreg","mgcv","gratia","patchwork","ggnewscale")
 vapply(ld_pkgs, library, logical(1L),
        character.only = TRUE, logical.return = TRUE)
